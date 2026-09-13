@@ -22,7 +22,10 @@ include(third_party_helpers)
 option(PARALLEL_ENABLE_EXTERNAL "Prefer external/system third-party packages when available" ON)
 mark_as_advanced(PARALLEL_ENABLE_EXTERNAL)
 
-set(PARALLEL_THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty"
+# CMAKE_CURRENT_LIST_DIR = this file's directory (<repo>/Cmake) regardless of
+# the including directory's scope.
+get_filename_component(_parallel_repo_root "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+set(PARALLEL_THIRD_PARTY_DIR "${_parallel_repo_root}/ThirdParty"
     CACHE PATH "Root of Parallel's bundled third-party sources"
 )
 
@@ -73,7 +76,13 @@ function(parallel_setup_benchmark)
     if(TARGET benchmark OR TARGET benchmark::benchmark)
         return()
     endif()
-    if(PARALLEL_ENABLE_EXTERNAL)
+    # Prefer the vendored submodule (pinned commit, known-good): some system
+    # benchmark packages (e.g. static Homebrew archives) mislink/crash when
+    # consumed via an IMPORTED target with a different toolchain.
+    set(_bench_src "")
+    if(EXISTS "${PARALLEL_THIRD_PARTY_DIR}/benchmark/CMakeLists.txt")
+        set(_bench_src "${PARALLEL_THIRD_PARTY_DIR}/benchmark")
+    elseif(PARALLEL_ENABLE_EXTERNAL)
         find_package(benchmark QUIET)
         if(benchmark_FOUND)
             message(STATUS "Found external Google Benchmark")
@@ -98,9 +107,9 @@ function(parallel_setup_benchmark)
     set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "Disable benchmark gtest tests" FORCE)
     set(BENCHMARK_USE_BUNDLED_GTEST OFF CACHE BOOL "Don't use bundled gtest for benchmark" FORCE)
     set(BENCHMARK_DOWNLOAD_DEPENDENCIES OFF CACHE BOOL "Don't download dependencies" FORCE)
-    if(EXISTS "${PARALLEL_THIRD_PARTY_DIR}/benchmark/CMakeLists.txt")
-        add_subdirectory("${PARALLEL_THIRD_PARTY_DIR}/benchmark"
-                         "${CMAKE_BINARY_DIR}/ThirdParty/benchmark_build" EXCLUDE_FROM_ALL)
+    if(_bench_src)
+        add_subdirectory("${_bench_src}" "${CMAKE_BINARY_DIR}/ThirdParty/benchmark_build"
+                         EXCLUDE_FROM_ALL)
     else()
         include(FetchContent)
         FetchContent_Declare(

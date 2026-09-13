@@ -1,0 +1,4 @@
+# Third-party BUILD overlay templates for external dependencies.
+exports_files([
+    "tbb.BUILD",
+])
