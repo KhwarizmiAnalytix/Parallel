@@ -1,0 +1,58 @@
+# =============================================================================
+# Parallel — Bazel workspace (standalone)
+# =============================================================================
+# Standalone Bazel build for the Parallel library. When consumed from XSigma,
+# XSigma's own workspace provides an overlay BUILD file instead — do not edit
+# this repo's vendored third-party trees.
+# =============================================================================
+
+workspace(name = "xsigma_parallel")
+
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+# =============================================================================
+# Bazel Skylib
+# =============================================================================
+http_archive(
+    name = "bazel_skylib",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.4.2/bazel-skylib-1.4.2.tar.gz",
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.4.2/bazel-skylib-1.4.2.tar.gz",
+    ],
+)
+
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+
+bazel_skylib_workspace()
+
+# =============================================================================
+# OpenMP host probe — mirrors Cmake/openmp.cmake's find_package(OpenMP)
+# =============================================================================
+load("//bazel:openmp_configure.bzl", "openmp_configure")
+
+openmp_configure(name = "parallel_openmp")
+
+# =============================================================================
+# Intel TBB (optional) — same pin as XSigma's WORKSPACE.bazel
+# =============================================================================
+http_archive(
+    name = "tbb",
+    build_file = "//ThirdParty:tbb.BUILD",
+    strip_prefix = "oneTBB-2023.1.0",
+    urls = [
+        "https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2023.1.0.tar.gz",
+    ],
+)
+
+# =============================================================================
+# Google Test / Benchmark — vendored nested submodules (ThirdParty/)
+# =============================================================================
+local_repository(
+    name = "com_google_googletest",
+    path = "ThirdParty/googletest",
+)
+
+local_repository(
+    name = "com_google_benchmark",
+    path = "ThirdParty/benchmark",
+)

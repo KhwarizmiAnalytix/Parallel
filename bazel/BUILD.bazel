@@ -1,0 +1,49 @@
+# =============================================================================
+# Parallel — Bazel Configuration Settings (standalone)
+# =============================================================================
+# Starlark --define keys mirror this repo's CMake cache names: parallel_backend,
+# parallel_enable_openmp, parallel_enable_tbb, build_shared_libs.
+# =============================================================================
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "xsigma.bzl",
+    "parallel.bzl",
+])
+
+# =============================================================================
+# Library Type Configuration
+# =============================================================================
+
+config_setting(
+    name = "shared_libs",
+    define_values = {"build_shared_libs": "true"},
+)
+
+# =============================================================================
+# Parallel Backend Configuration
+# =============================================================================
+
+# Legacy opt-in flag (parallel_enable_openmp=true) — PARALLEL_BACKEND=openmp is preferred.
+config_setting(
+    name = "enable_openmp",
+    define_values = {"parallel_enable_openmp": "true"},
+)
+
+# CMake PARALLEL_BACKEND=openmp|tbb — drives the SMP backend (default std).
+config_setting(
+    name = "parallel_backend_openmp",
+    define_values = {"parallel_backend": "openmp"},
+)
+
+config_setting(
+    name = "parallel_backend_tbb",
+    define_values = {"parallel_backend": "tbb"},
+)
+
+# Legacy opt-in flag (parallel_enable_tbb=true) — PARALLEL_BACKEND=tbb is preferred.
+config_setting(
+    name = "parallel_enable_tbb",
+    define_values = {"parallel_enable_tbb": "true"},
+)

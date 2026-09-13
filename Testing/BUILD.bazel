@@ -1,0 +1,15 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "parallelTest_header",
+    hdrs = [
+        "ParallelTest.h",
+        "ParallelTest.h.in",
+    ],
+    includes = [
+        ".",
+    ],
+    deps = [
+        "//:Parallel",
+    ],
+)
