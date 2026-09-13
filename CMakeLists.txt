@@ -209,8 +209,10 @@ list(FILTER parallel_headers EXCLUDE REGEX ".*/Testing/.*")
 list(FILTER parallel_sources EXCLUDE REGEX ".*/Testing/.*")
 
 # Keep vendored third-party sources (ThirdParty/ nested submodules) out of the library target.
-list(FILTER parallel_headers EXCLUDE REGEX ".*/ThirdParty/.*")
-list(FILTER parallel_sources EXCLUDE REGEX ".*/ThirdParty/.*")
+# Anchored at CMAKE_CURRENT_SOURCE_DIR: when embedded in XSigma the repo lives at
+# XSigma/ThirdParty/Parallel, so an unanchored ".*/ThirdParty/.*" would exclude everything.
+list(FILTER parallel_headers EXCLUDE REGEX "^${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/")
+list(FILTER parallel_sources EXCLUDE REGEX "^${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/")
 
 # Remove TBB backend files when TBB is not enabled.
 if(NOT PARALLEL_ENABLE_TBB)
