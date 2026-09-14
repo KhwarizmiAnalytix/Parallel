@@ -11,14 +11,14 @@ Standalone CMake package — any C++ project can consume it via `add_subdirector
 
 ## Layout
 
-All C++ sources live under `Parallel/` (the include root stays the repository root, so consumers
-use `#include "Parallel/tools/parallel_tools.h"` etc.):
+Library sources live under `Parallel/` (the include root stays the repository root, so consumers
+use `#include "Parallel/tools/parallel_tools.h"` etc.); `Testing/` stays at the repository root:
 
 - `CMakeLists.txt` — `PARALLEL_ENABLE_*`; backend from `Cmake/parallel_backend.cmake`.
 - `BUILD.bazel` — `//:Parallel`; backend sources via `select`.
 - `Parallel/common/`, `Parallel/tools/` — backend-agnostic core.
 - `Parallel/std_thread/`, `Parallel/openmp/`, `Parallel/tbb/` — backend code.
-- `Parallel/Testing/Cxx/` — tests and benchmarks (built only standalone).
+- `Testing/Cxx/` — tests and benchmarks (built only standalone).
 
 ---
 
@@ -104,4 +104,4 @@ Starlark: [`bazel/parallel.bzl`](../../bazel/parallel.bzl). `config_setting` nam
 
 ### CMake-only
 
-Benchmarks and tests aren't gated behind a define on the Bazel side — benchmark targets are generated per `Benchmark*.cpp` file and built on request (`bazel build //Parallel/Testing/Cxx:benchmark_<name>`), and the GoogleTest-based `ParallelCxxTests` target always links gtest. `PARALLEL_CXX_STANDARD` is fixed at `c++20` in `parallel.bzl` rather than configurable. LTO, coverage, sanitizers, linker/cache, spell, Valgrind — **CMake only**.
+Benchmarks and tests aren't gated behind a define on the Bazel side — benchmark targets are generated per `Benchmark*.cpp` file and built on request (`bazel build //Testing/Cxx:benchmark_<name>`), and the GoogleTest-based `ParallelCxxTests` target always links gtest. `PARALLEL_CXX_STANDARD` is fixed at `c++20` in `parallel.bzl` rather than configurable. LTO, coverage, sanitizers, linker/cache, spell, Valgrind — **CMake only**.

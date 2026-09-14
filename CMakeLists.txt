@@ -53,7 +53,7 @@ set_property(CACHE PARALLEL_LTO_MODE PROPERTY STRINGS off thin full ipo auto)
 # this module only. LTO is automatically skipped when coverage is enabled.
 option(PARALLEL_ENABLE_COVERAGE "Enable coverage instrumentation for Parallel tests" OFF)
 
-# Testing — gates add_subdirectory(Parallel/Testing/Cxx).
+# Testing — gates add_subdirectory(Testing/Cxx).
 option(PARALLEL_ENABLE_TESTING "Build Parallel test suite" ON)
 
 # Examples — gates add_subdirectory(Examples) when Parallel examples exist.
@@ -271,15 +271,15 @@ target_include_directories(
   Parallel
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Parallel/Testing>
-         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/Parallel/Testing>
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Testing>
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/Testing>
          $<INSTALL_INTERFACE:include>
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/Parallel/Testing/ParallelTest.h.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/Parallel/Testing/ParallelTest.h" @ONLY
+  "${CMAKE_CURRENT_SOURCE_DIR}/Testing/ParallelTest.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/Testing/ParallelTest.h" @ONLY
 )
 
 if(PARALLEL_DEPENDENCY_INCLUDE_DIRS)
@@ -321,7 +321,7 @@ install(FILES ${parallel_headers} DESTINATION include/Parallel/Parallel COMPONEN
 
 # --- Testing ---
 if(PARALLEL_ENABLE_TESTING)
-  add_subdirectory(Parallel/Testing/Cxx)
+  add_subdirectory(Testing/Cxx)
 endif()
 
 if(PARALLEL_ENABLE_VALGRIND AND PARALLEL_ENABLE_TESTING)
