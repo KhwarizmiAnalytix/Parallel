@@ -35,6 +35,7 @@
 #pragma once
 
 #include <functional>   // For std::function
+#include <mutex>        // For std::mutex, std::lock_guard (parallel_reduce)
 #include <string>       // For std::string
 #include <type_traits>  // For std::enable_if
 #include <utility>
@@ -247,6 +248,72 @@ public:
         fi.parallel_for(first, last, grain);
     }
     ///@}
+
+    /**
+   * @brief Map-reduce [first, last) as a single call — no functor class to write.
+   *
+   * The single recommended way to combine a result out of a parallel_for: splits [first, last)
+   * into chunks exactly as parallel_for() does, calls `chunk_fn(chunk_first, chunk_last,
+   * identity)` once per chunk to reduce that chunk to one partial value, then folds every
+   * chunk's partial value together with `combine_fn`. Modeled on PyTorch's
+   * `at::parallel_reduce(begin, end, grain_size, ident, f, sf)`; unlike PyTorch's ATen backend,
+   * which collects partial results into a per-chunk array, this folds them one at a time behind
+   * a mutex as each chunk finishes — simpler, backend-agnostic (works identically under std,
+   * OpenMP, and TBB with no per-backend code), and fine as long as `chunk_fn` does the actual
+   * work; the mutex is only held for the combine step, once per chunk, not per element.
+   *
+   * `combine_fn` must be associative and commutative: chunks finish in whatever order the
+   * backend's scheduler picks, so combine_fn(a, b) may be called in any order and pairing.
+   *
+   * @code
+   * // Sum of squares of a vector, in parallel:
+   * double result = parallel_tools::parallel_reduce(
+   *     0, data.size(), 1000, 0.0,
+   *     [&](size_t first, size_t last, double init) {
+   *         double partial = init;
+   *         for (size_t i = first; i < last; ++i) partial += data[i] * data[i];
+   *         return partial;
+   *     },
+   *     [](double a, double b) { return a + b; });
+   * @endcode
+   *
+   * @param first The start of the range (inclusive)
+   * @param last The end of the range (exclusive)
+   * @param grain Hint about coarseness for parallelization (same meaning as in parallel_for)
+   * @param identity Starting value handed to every chunk's reduction, and the value returned
+   *        directly (no parallel work dispatched) when first >= last
+   * @param chunk_fn (size_t chunk_first, size_t chunk_last, T identity) -> T: reduces one chunk
+   *        to a single partial value, starting from `identity`
+   * @param combine_fn (T a, T b) -> T: combines two partial (or previously-combined) values
+   * @return The fully combined result, or `identity` if the range is empty
+   */
+    template <typename T, typename ChunkFn, typename CombineFn>
+    static T parallel_reduce(
+        size_t      first,
+        size_t      last,
+        size_t      grain,
+        T           identity,
+        ChunkFn&&   chunk_fn,
+        CombineFn&& combine_fn)
+    {
+        if (first >= last)
+        {
+            return identity;
+        }
+
+        std::mutex mtx;
+        T          accumulated = identity;
+
+        auto combine_chunk = [&](size_t chunk_first, size_t chunk_last)
+        {
+            T                           partial = chunk_fn(chunk_first, chunk_last, identity);
+            std::lock_guard<std::mutex> lock(mtx);
+            accumulated = combine_fn(accumulated, partial);
+        };
+        parallel_for(first, last, grain, combine_chunk);
+
+        return accumulated;
+    }
 
     /**
    * /!\ This method is not thread safe.

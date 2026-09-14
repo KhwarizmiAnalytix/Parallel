@@ -24,23 +24,67 @@ change shape without notice. (`parallel_tools_api`, the internal singleton `para
 literally documented as "Internal API" in its own test file — see
 [`Testing/Cxx/TestParallelToolsApi.cpp`](Testing/Cxx/TestParallelToolsApi.cpp) — for exactly this reason.)
 
-| Header | Class | Use it for |
-|--------|-------|------------|
-| `Parallel/tools/parallel_tools.h` | `parallel_tools` | Data-parallel loops (`parallel_for`) over the active SMP backend |
-| `Parallel/tools/multi_threader.h` | `multi_threader` | Running one function across N threads directly, or one function per thread |
-| `Parallel/tools/threaded_callback_queue.h` | `threaded_callback_queue` | Fire-and-forget or dependent async tasks, each returning a future-like handle |
-| `Parallel/tools/threaded_task_queue.h` | `threaded_task_queue<R, Args...>` | A fixed worker function fed a stream of inputs, producing a stream of outputs |
+### The one entry point: `parallel_tools`
 
-### `parallel_tools` — data-parallel loops
-
-The main entry point. `parallel_for` splits `[first, last)` into chunks of about `grain` elements and runs
-them across the active backend's threads, calling your functor's `operator()(size_t first, size_t last)`
-once per chunk. A functor may optionally define `Initialize()` (called once per worker thread, before its
-first chunk) and `Reduce()` (called once after all chunks finish) for per-thread setup and result merging.
+Almost everything you want is one header and one class:
 
 ```cpp
 #include "Parallel/tools/parallel_tools.h"
+```
 
+**Run something in parallel** — `parallel_for(first, last, grain, fn)` splits `[first, last)` into chunks
+of about `grain` elements and runs `fn(chunk_first, chunk_last)` for each chunk across the active backend's
+threads. `fn` is just a lambda:
+
+```cpp
+std::vector<int> data(1'000'000);
+parallel_tools::parallel_for(0, data.size(), /*grain=*/1000,
+    [&](size_t first, size_t last) {
+        for (size_t i = first; i < last; ++i) data[i] *= 2;
+    });
+```
+
+**Get a value back (reduce)** — `parallel_reduce(first, last, grain, identity, chunk_fn, combine_fn)` is the
+same idea, but each chunk computes a partial result and every partial result is folded into one final value.
+Two lambdas, no class to write:
+
+```cpp
+double sum_of_squares = parallel_tools::parallel_reduce(
+    0, data.size(), /*grain=*/1000, /*identity=*/0.0,
+    [&](size_t first, size_t last, double init) {          // reduce one chunk
+        double partial = init;
+        for (size_t i = first; i < last; ++i) partial += data[i] * data[i];
+        return partial;
+    },
+    [](double a, double b) { return a + b; });              // combine two chunks' results
+```
+
+`combine_fn` must be associative and commutative (order-independent) — chunks finish in whatever order the
+backend's scheduler picks. That's the whole map-reduce API: those two calls cover the large majority of use
+cases.
+
+A few more statics round out the class: `initialize(num_threads = 0)` (0 = auto-detect; call once, before
+first use, if you want a specific thread count), `estimated_number_of_threads()`, `is_parallel_scope()`
+(true when called from inside a worker thread), and `local_scope(config, lambda)` to temporarily override
+thread count / backend / nested-parallelism for one call (restored afterward, even if `lambda` throws):
+
+```cpp
+parallel_tools::local_scope(parallel_tools::config{4}, [] { /* runs with 4 threads */ });
+```
+
+There is currently no way to query the active backend's name from `parallel_tools` itself (only the
+internal `parallel_tools_api` exposes `get_backend()`) — backend selection is a build-time choice
+(`PARALLEL_BACKEND`), not something client code is expected to branch on at runtime.
+
+<details>
+<summary><b>Advanced:</b> a functor class instead of a lambda, for per-thread setup or teardown</summary>
+
+`parallel_for` also accepts a functor object instead of a lambda. Use this only when you need
+`Initialize()` (called once per worker thread, before that thread's first chunk) or `Reduce()` (called
+once, after every chunk everywhere has finished) — for example, per-thread scratch buffers that would be
+wasteful to allocate per chunk:
+
+```cpp
 struct scale_by_two
 {
     std::vector<int>& data;
@@ -50,25 +94,27 @@ struct scale_by_two
     }
 };
 
-parallel_tools::initialize();               // optional: 0 or omitted = auto-detect thread count
 scale_by_two functor{data};
-parallel_tools::parallel_for(0, data.size(), /*grain=*/1000, functor);
+parallel_tools::parallel_for(0, data.size(), 1000, functor);
 ```
 
-Other statics: `estimated_number_of_threads()` / `estimated_default_number_of_threads()`, `is_parallel_scope()`
-(true when called from inside a worker thread), `single_thread()`, and `set_nested_parallelism()` /
-`nested_parallelism()` to allow (or detect) a `parallel_for` launched from inside another one.
+`parallel_reduce` is built entirely on top of `parallel_for` (a small wrapper functor and a mutex around
+the combine step) — for most reductions it is simpler than writing this by hand.
 
-`local_scope(config, lambda)` overrides thread count / backend / nested-parallelism for the duration of
-`lambda` only, then restores the previous settings — even if `lambda` throws:
+</details>
 
-```cpp
-parallel_tools::local_scope(parallel_tools::config{4}, [] { /* runs with 4 threads */ });
-```
+---
 
-There is currently no way to query the active backend's name from `parallel_tools` itself (only the
-internal `parallel_tools_api` exposes `get_backend()`) — backend selection is a build-time choice
-(`PARALLEL_BACKEND`), not something client code is expected to branch on at runtime.
+## Advanced / other tools
+
+The rest of the library is special-purpose; most callers never need it. Each lives in its own header
+under `Parallel/tools/`, independent of `parallel_tools`.
+
+| Header | Class | Use it for |
+|--------|-------|------------|
+| `Parallel/tools/multi_threader.h` | `multi_threader` | Running one function across N threads directly, or one function per thread |
+| `Parallel/tools/threaded_callback_queue.h` | `threaded_callback_queue` | Fire-and-forget or dependent async tasks, each returning a future-like handle |
+| `Parallel/tools/threaded_task_queue.h` | `threaded_task_queue<R, Args...>` | A fixed worker function fed a stream of inputs, producing a stream of outputs |
 
 ### `multi_threader` — direct thread control
 
@@ -139,6 +185,8 @@ queue.pop(result);                               // blocks until ready; result =
 set it `false` to always get the *latest* available result, which lets `buffer_size` discard stale queued
 (not-yet-started) inputs once the queue backs up. There is a `threaded_task_queue<void, Args...>`
 specialization for fire-and-forget workers (no `pop`, only `push`/`is_empty`/`flush`).
+
+---
 
 ## Layout
 

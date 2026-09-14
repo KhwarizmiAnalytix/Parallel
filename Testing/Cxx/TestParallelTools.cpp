@@ -507,4 +507,125 @@ PARALLELTEST(ParallelTools, test)
     }
 }
 
+// ============================================================================
+// parallel_reduce: map-reduce as a single call, no functor class required.
+// ============================================================================
+
+PARALLELTEST(ParallelTools, parallel_reduce)
+{
+    // Basic correctness: sum of 0..size-1 == size * (size - 1) / 2
+    {
+        const size_t      size     = 10000;
+        std::vector<long> data(size);
+        for (size_t i = 0; i < size; ++i)
+        {
+            data[i] = static_cast<long>(i);
+        }
+
+        long sum = parallel_tools::parallel_reduce(
+            0,
+            size,
+            /*grain=*/1000,
+            0L,
+            [&data](size_t first, size_t last, long init)
+            {
+                long partial = init;
+                for (size_t i = first; i < last; ++i)
+                {
+                    partial += data[i];
+                }
+                return partial;
+            },
+            [](long a, long b) { return a + b; });
+
+        EXPECT_EQ(sum, static_cast<long>(size - 1) * static_cast<long>(size) / 2);
+    }
+
+    // Empty range: returns identity without dispatching any work.
+    {
+        int calls  = 0;
+        int result = parallel_tools::parallel_reduce(
+            5,
+            5,
+            10,
+            -1,
+            [&calls](size_t, size_t, int init)
+            {
+                ++calls;
+                return init;
+            },
+            [](int a, int b) { return a + b; });
+        EXPECT_EQ(result, -1);
+        EXPECT_EQ(calls, 0);
+    }
+
+    // Reversed range (first > last): treated as empty, same as parallel_for's convention.
+    {
+        int result = parallel_tools::parallel_reduce(
+            10,
+            0,
+            5,
+            42,
+            [](size_t, size_t, int init) { return init; },
+            [](int a, int b) { return a + b; });
+        EXPECT_EQ(result, 42);
+    }
+
+    // Non-commutative-looking but order-independent reduction (max) to check combine correctness.
+    {
+        const size_t        size = 5000;
+        std::vector<size_t> data(size);
+        for (size_t i = 0; i < size; ++i)
+        {
+            data[i] = (i * 7919) % size;  // scattered, non-monotonic values
+        }
+
+        size_t max_value = parallel_tools::parallel_reduce(
+            0,
+            size,
+            250,
+            static_cast<size_t>(0),
+            [&data](size_t first, size_t last, size_t init)
+            {
+                size_t partial = init;
+                for (size_t i = first; i < last; ++i)
+                {
+                    partial = std::max(partial, data[i]);
+                }
+                return partial;
+            },
+            [](size_t a, size_t b) { return std::max(a, b); });
+
+        size_t expected = *std::max_element(data.begin(), data.end());
+        EXPECT_EQ(max_value, expected);
+    }
+
+    // Grain size coverage: small, medium, and oversized-vs-range grains all produce the same result.
+    {
+        const size_t        size   = 2000;
+        std::vector<size_t> grains = {1, 100, 5000};
+        std::vector<int>    data(size, 1);
+
+        for (size_t grain : grains)
+        {
+            int count = parallel_tools::parallel_reduce(
+                0,
+                size,
+                grain,
+                0,
+                [&data](size_t first, size_t last, int init)
+                {
+                    int partial = init;
+                    for (size_t i = first; i < last; ++i)
+                    {
+                        partial += data[i];
+                    }
+                    return partial;
+                },
+                [](int a, int b) { return a + b; });
+            EXPECT_EQ(count, static_cast<int>(size)) << "Failed with grain " << grain;
+        }
+    }
+}
+
 }  // namespace parallel
