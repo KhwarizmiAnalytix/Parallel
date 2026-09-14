@@ -9,6 +9,137 @@
 Standalone CMake package — any C++ project can consume it via `add_subdirectory`;
 [XSigma](https://github.com/KhwarizmiAnalytix/Hisab) is one consumer, not a required host.
 
+---
+
+## Public API
+
+Client code should only include headers under `Parallel/tools/`, plus `Parallel/common/parallel_export.h`
+if you need the `PARALLEL_API`/`PARALLEL_VISIBILITY` macros (e.g. to export your own symbols consistently
+across a shared-library boundary). Everything else — `Parallel/common/parallel_tools_impl.h`,
+`Parallel/common/parallel_tools_api.h`, `Parallel/tools/parallel.h`'s `backend_type` enum, and everything
+under `Parallel/openmp/`, `Parallel/std_thread/`, `Parallel/tbb/` — is backend-selection machinery, chosen
+automatically at compile time from `PARALLEL_BACKEND`. It lives in the `parallel::detail::parallel_impl`
+namespace; `detail` is the convention marker that nothing in it is part of the public contract, and it can
+change shape without notice. (`parallel_tools_api`, the internal singleton `parallel_tools` forwards to, is
+literally documented as "Internal API" in its own test file — see
+[`Testing/Cxx/TestParallelToolsApi.cpp`](Testing/Cxx/TestParallelToolsApi.cpp) — for exactly this reason.)
+
+| Header | Class | Use it for |
+|--------|-------|------------|
+| `Parallel/tools/parallel_tools.h` | `parallel_tools` | Data-parallel loops (`parallel_for`) over the active SMP backend |
+| `Parallel/tools/multi_threader.h` | `multi_threader` | Running one function across N threads directly, or one function per thread |
+| `Parallel/tools/threaded_callback_queue.h` | `threaded_callback_queue` | Fire-and-forget or dependent async tasks, each returning a future-like handle |
+| `Parallel/tools/threaded_task_queue.h` | `threaded_task_queue<R, Args...>` | A fixed worker function fed a stream of inputs, producing a stream of outputs |
+
+### `parallel_tools` — data-parallel loops
+
+The main entry point. `parallel_for` splits `[first, last)` into chunks of about `grain` elements and runs
+them across the active backend's threads, calling your functor's `operator()(size_t first, size_t last)`
+once per chunk. A functor may optionally define `Initialize()` (called once per worker thread, before its
+first chunk) and `Reduce()` (called once after all chunks finish) for per-thread setup and result merging.
+
+```cpp
+#include "Parallel/tools/parallel_tools.h"
+
+struct scale_by_two
+{
+    std::vector<int>& data;
+    void operator()(size_t first, size_t last)
+    {
+        for (size_t i = first; i < last; ++i) data[i] *= 2;
+    }
+};
+
+parallel_tools::initialize();               // optional: 0 or omitted = auto-detect thread count
+scale_by_two functor{data};
+parallel_tools::parallel_for(0, data.size(), /*grain=*/1000, functor);
+```
+
+Other statics: `estimated_number_of_threads()` / `estimated_default_number_of_threads()`, `is_parallel_scope()`
+(true when called from inside a worker thread), `single_thread()`, and `set_nested_parallelism()` /
+`nested_parallelism()` to allow (or detect) a `parallel_for` launched from inside another one.
+
+`local_scope(config, lambda)` overrides thread count / backend / nested-parallelism for the duration of
+`lambda` only, then restores the previous settings — even if `lambda` throws:
+
+```cpp
+parallel_tools::local_scope(parallel_tools::config{4}, [] { /* runs with 4 threads */ });
+```
+
+There is currently no way to query the active backend's name from `parallel_tools` itself (only the
+internal `parallel_tools_api` exposes `get_backend()`) — backend selection is a build-time choice
+(`PARALLEL_BACKEND`), not something client code is expected to branch on at runtime.
+
+### `multi_threader` — direct thread control
+
+Lower-level than `parallel_tools`: you get an explicit `thread_info` (with `thread_id`, `number_of_threads`,
+and your `user_data`) per thread instead of a `[first, last)` range. Useful when the work isn't a uniform
+range, or each thread needs to run *different* code (`set_multiple_method`).
+
+```cpp
+#include "Parallel/tools/multi_threader.h"
+
+void worker(void* data)
+{
+    auto* info    = static_cast<multi_threader::thread_info*>(data);
+    auto* counter = static_cast<std::atomic<int>*>(info->user_data);
+    counter->fetch_add(1);
+}
+
+multi_threader* mt = multi_threader::create();   // heap-allocated; caller owns it
+mt->set_number_of_threads(4);
+std::atomic<int> counter{0};
+mt->set_single_method(worker, &counter);
+mt->single_method_execute();                     // blocks until all 4 threads finish
+delete mt;
+```
+
+`create()` returns a raw, caller-owned pointer (its constructor is protected — this is the only way to
+obtain an instance). `spawn_thread()`/`terminate_thread()` manage individual fire-and-forget threads
+outside the single/multiple-method model.
+
+### `threaded_callback_queue` — async tasks with dependencies
+
+`push` enqueues any callable (function pointer, lambda, member-function pointer + object, ...) with its
+arguments and returns immediately with a `shared_future`-like handle; the call runs on one of the queue's
+worker threads. `get()` blocks until that task's result is ready.
+
+```cpp
+#include "Parallel/tools/threaded_callback_queue.h"
+
+threaded_callback_queue queue;
+queue.set_number_of_threads(4);                  // default is 1 — always set this
+
+auto future = queue.push([](int x) { return x * x; }, 21);
+int  result = queue.get(future);                 // blocks until ready; result == 441
+```
+
+`push_dependent(futures, f, args...)` enqueues `f` so it only runs after every future in `futures` has
+completed — use it to build a task DAG without manual synchronization. `wait(futures)` blocks until a set
+of futures are all done without retrieving their values. All public methods are thread-safe: multiple
+threads may `push`/`get` on the same queue concurrently.
+
+### `threaded_task_queue<R, Args...>` — worker-function stream processing
+
+For the common case of "one fixed function, many calls, executed off the calling thread": construct once
+with the worker function, then `push` inputs and `pop`/`try_pop` outputs.
+
+```cpp
+#include "Parallel/tools/threaded_task_queue.h"
+
+auto worker = [](int x) { return x * 2; };
+threaded_task_queue<int, int> queue(worker, /*strict_ordering=*/true, /*buffer_size=*/-1,
+                                     /*max_concurrent_tasks=*/4);
+queue.push(5);
+int result = 0;
+queue.pop(result);                               // blocks until ready; result == 10
+```
+
+`strict_ordering` (default `true`) makes `pop`/`try_pop` return results in push order, dropping nothing;
+set it `false` to always get the *latest* available result, which lets `buffer_size` discard stale queued
+(not-yet-started) inputs once the queue backs up. There is a `threaded_task_queue<void, Args...>`
+specialization for fire-and-forget workers (no `pop`, only `push`/`is_empty`/`flush`).
+
 ## Layout
 
 Library sources live under `Parallel/` (the include root stays the repository root, so consumers
@@ -30,7 +161,7 @@ use `#include "Parallel/tools/parallel_tools.h"` etc.); `Testing/` stays at the 
 |----------------|---------|--------|
 | `PARALLEL_BACKEND` | `std` | `std`, `openmp`, `tbb` — mutually exclusive; drives `PARALLEL_ENABLE_OPENMP` / `PARALLEL_ENABLE_TBB` |
 
-See `Library/Parallel/Cmake/parallel_backend.cmake` for how flags are forced when switching backend.
+See [`Cmake/parallel_backend.cmake`](Cmake/parallel_backend.cmake) for how flags are forced when switching backend.
 
 ### Feature and toolchain
 

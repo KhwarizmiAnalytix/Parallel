@@ -21,6 +21,16 @@
  *   Licensed under BSD-3-Clause
  */
 
+/**
+ * @internal
+ * @brief Backend-selection singleton behind parallel_tools — not part of the public API.
+ *
+ * parallel_tools_api resolves, at compile time, which backend (std::thread / OpenMP / TBB)
+ * parallel_tools_impl<Backend> is instantiated with, and exposes that instance as a singleton.
+ * Client code should use parallel_tools (Parallel/tools/parallel_tools.h) instead: this class,
+ * and the parallel::detail::parallel_impl namespace it lives in, may change shape without notice.
+ */
+
 #pragma once
 
 #include <atomic>

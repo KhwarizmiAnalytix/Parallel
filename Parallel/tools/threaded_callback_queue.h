@@ -218,21 +218,40 @@ public:
     using shared_future_pointer = std::shared_ptr<shared_future<ReturnT>>;
 
     /**
-   * Pushes a function f to be passed args... as arguments.
+   * @brief Enqueue f(args...) to run asynchronously on one of this queue's worker threads.
+   *
+   * Returns immediately; the call happens later, on whichever worker thread is free.
+   * `f` may be a free function, a lambda/functor, or a pointer-to-member-function paired with an
+   * object/pointer/smart-pointer as the first of `args` (the object f is called on). Thread-safe:
+   * safe to call concurrently with other push()/push_dependent()/get()/wait() calls.
+   *
+   * @param f The callable to invoke.
+   * @param args Arguments forwarded to f when it runs.
+   * @return A shared_future_pointer<R> (R = f's return type) for retrieving the result via get(),
+   *         or as a dependency for a later push_dependent().
    */
     template <class FT, class... ArgsT>
     shared_future_pointer<invoke_result<FT>> push(FT&& f, ArgsT&&... args);
 
     /**
-   * This method behaves the same way `push` does, with the addition of a container of `futures`.
+   * @brief Like push(), but f only runs after every future in prior_shared_futures is done.
+   *
+   * Use this to build a task graph without manual synchronization: f will not be scheduled on a
+   * worker thread until all of prior_shared_futures have completed (successfully or not).
+   *
+   * @param prior_shared_futures A container of shared_future_pointer values (e.g. a
+   *        std::vector or brace-initialized list) that must finish before f runs.
+   * @param f The callable to invoke once every prior future is done.
+   * @param args Arguments forwarded to f when it runs.
+   * @return A shared_future_pointer<R> for f's result, same as push().
    */
     template <class SharedFutureContainerT, class FT, class... ArgsT>
     shared_future_pointer<invoke_result<FT>> push_dependent(
         SharedFutureContainerT&& prior_shared_futures, FT&& f, ArgsT&&... args);
 
     /**
-   * This method blocks the current thread until all the tasks associated with each shared future
-   * inside `prior_shared_future` has terminated.
+   * Blocks the calling thread until every future in prior_shared_future has terminated, without
+   * retrieving their results (use get() for that).
    */
     template <class SharedFutureContainerT>
     void wait(SharedFutureContainerT&& prior_shared_future);

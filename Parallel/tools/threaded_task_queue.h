@@ -95,11 +95,26 @@ template <typename R, typename... Args>
 class PARALLEL_VISIBILITY threaded_task_queue
 {
 public:
+    /**
+   * Starts max_concurrent_tasks worker threads immediately; they run until destruction.
+   *
+   * @param worker The function invoked for every push()ed set of arguments.
+   * @param strict_ordering If true (default), pop()/try_pop() return results in push() order,
+   *        waiting for a slower earlier task rather than skipping it; buffer_size is ignored
+   *        (forced unlimited). If false, a result whose task finishes after a later task already
+   *        returned is dropped instead of returned, and buffer_size takes effect.
+   * @param buffer_size Max number of not-yet-started tasks kept queued when strict_ordering is
+   *        false; pushing past this drops the oldest queued (not in-progress) task. -1 = unlimited.
+   * @param max_concurrent_tasks Number of worker threads to start. <= 0 uses
+   *        multi_threader::get_global_default_number_of_threads().
+   */
     threaded_task_queue(
         std::function<R(Args...)> worker,
         bool                      strict_ordering      = true,
         int                       buffer_size          = -1,
         int                       max_concurrent_tasks = -1);
+
+    /** Signals workers to stop once the queue drains, then joins them (blocks until then). */
     ~threaded_task_queue();
 
     /**

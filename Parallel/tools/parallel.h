@@ -23,7 +23,13 @@
 
 /**
  * @file parallel.h
- * @brief PARALLEL (Shared Memory Parallelism) configuration and backend definitions
+ * @internal
+ * @brief PARALLEL (Shared Memory Parallelism) configuration and backend definitions.
+ *
+ * backend_type and default_backend are internal (parallel::detail::parallel_impl): they identify
+ * which backend was selected at compile time via PARALLEL_BACKEND, for use by parallel_tools_api
+ * and the per-backend parallel_tools_impl specializations. Client code does not need — and should
+ * not need — to name a specific backend; use parallel_tools (Parallel/tools/parallel_tools.h).
  */
 
 #pragma once

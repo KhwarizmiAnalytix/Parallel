@@ -212,20 +212,25 @@ class PARALLEL_VISIBILITY parallel_tools
 public:
     ///@{
     /**
-   * @brief Execute a for operation in parallel using a functor (legacy API).
+   * @brief Execute a for operation in parallel over the active SMP backend.
    *
-   * This API is maintained for backward compatibility with existing code.
-   * For new code, prefer the lambda-based overloads above.
+   * Splits [first, last) into chunks of about `grain` elements and calls
+   * `f.operator()(chunk_first, chunk_last)` once per chunk, on worker threads
+   * managed by the active backend (std::thread / OpenMP / TBB).
    *
-   * The functor should implement:
+   * The functor must implement:
    * - operator()(size_t first, size_t last)
-   * - Optional: Initialize() method for per-thread initialization
-   * - Optional: Reduce() method for result aggregation
+   * - Optional: Initialize() — called once per worker thread before its first chunk
+   * - Optional: Reduce() — called once after all chunks have completed
+   *
+   * A plain lambda works for the required operator() overload alone (no
+   * Initialize()/Reduce()); wrap state that needs per-thread setup or a
+   * reduction step in a small functor struct instead.
    *
    * @param first The start of the range (inclusive)
    * @param last The end of the range (exclusive)
    * @param grain Hint about coarseness for parallelization
-   * @param f Functor object
+   * @param f Functor object (may be const if its operator() is const)
    */
     template <typename Functor>
     static void parallel_for(size_t first, size_t last, size_t grain, Functor& f)
@@ -241,6 +246,7 @@ public:
             f);
         fi.parallel_for(first, last, grain);
     }
+    ///@}
 
     /**
    * /!\ This method is not thread safe.

@@ -21,6 +21,15 @@
  *   Licensed under BSD-3-Clause
  */
 
+/**
+ * @internal
+ * @brief Per-backend parallel_for/thread-state implementation — not part of the public API.
+ *
+ * parallel_tools_impl<Backend> is specialized once per Backend (see Parallel/std_thread/,
+ * Parallel/openmp/, Parallel/tbb/); only the one matching PARALLEL_BACKEND is compiled in.
+ * Client code should use parallel_tools (Parallel/tools/parallel_tools.h) instead.
+ */
+
 #pragma once
 
 #include <atomic>
