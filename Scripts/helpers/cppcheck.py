@@ -10,7 +10,13 @@ from typing import Optional
 
 # Source directories that make up the Parallel library (mirrors CMakeLists.txt's
 # GLOB_RECURSE root minus Testing/ and ThirdParty/).
-_SOURCE_DIRS = ["common", "tools", "std_thread", "openmp", "tbb"]
+_SOURCE_DIRS = [
+    "Parallel/common",
+    "Parallel/tools",
+    "Parallel/std_thread",
+    "Parallel/openmp",
+    "Parallel/tbb",
+]
 
 
 @dataclass

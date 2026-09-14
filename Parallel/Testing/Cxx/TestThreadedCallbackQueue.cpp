@@ -17,7 +17,7 @@
 #include <thread>
 
 #include "ParallelTest.h"
-#include "tools/threaded_callback_queue.h"
+#include "Parallel/tools/threaded_callback_queue.h"
 
 namespace parallel
 {

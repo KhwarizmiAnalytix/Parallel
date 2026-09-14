@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "common/parallel_export.h"
-#include "common/parallel_tools_impl.h"
+#include "Parallel/common/parallel_export.h"
+#include "Parallel/common/parallel_tools_impl.h"
 
 #ifdef _MSC_VER
 #pragma push_macro("__TBB_NO_IMPLICIT_LINKAGE")

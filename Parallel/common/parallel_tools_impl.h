@@ -26,8 +26,8 @@
 #include <atomic>
 #include <cstddef>
 
-#include "common/parallel_export.h"
-#include "tools/parallel.h"
+#include "Parallel/common/parallel_export.h"
+#include "Parallel/tools/parallel.h"
 
 namespace parallel
 {

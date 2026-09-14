@@ -26,16 +26,16 @@
 #include <atomic>
 #include <memory>
 
-#include "common/parallel_export.h"
-#include "common/parallel_tools_impl.h"
-#include "tools/parallel.h"
+#include "Parallel/common/parallel_export.h"
+#include "Parallel/common/parallel_tools_impl.h"
+#include "Parallel/tools/parallel.h"
 
 #if PARALLEL_HAS_TBB
-#include "tbb/parallel_tools_impl.h"
+#include "Parallel/tbb/parallel_tools_impl.h"
 #elif PARALLEL_HAS_OPENMP
-#include "openmp/parallel_tools_impl.h"
+#include "Parallel/openmp/parallel_tools_impl.h"
 #else
-#include "std_thread/parallel_tools_impl.h"
+#include "Parallel/std_thread/parallel_tools_impl.h"
 #endif
 
 namespace parallel

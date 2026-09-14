@@ -11,10 +11,14 @@ Standalone CMake package — any C++ project can consume it via `add_subdirector
 
 ## Layout
 
+All C++ sources live under `Parallel/` (the include root stays the repository root, so consumers
+use `#include "Parallel/tools/parallel_tools.h"` etc.):
+
 - `CMakeLists.txt` — `PARALLEL_ENABLE_*`; backend from `Cmake/parallel_backend.cmake`.
 - `BUILD.bazel` — `//:Parallel`; backend sources via `select`.
-- `std_thread/`, `openmp/`, `tbb/` — backend code.
-- `Testing/Cxx/` — tests and benchmarks (built only standalone).
+- `Parallel/common/`, `Parallel/tools/` — backend-agnostic core.
+- `Parallel/std_thread/`, `Parallel/openmp/`, `Parallel/tbb/` — backend code.
+- `Parallel/Testing/Cxx/` — tests and benchmarks (built only standalone).
 
 ---
 
@@ -55,10 +59,12 @@ Thread API macros (`PARALLEL_HAS_PTHREADS` / `PARALLEL_HAS_WIN32_THREADS`) are s
 
 ## CI
 
-[`.github/workflows/`](../../.github/workflows/): `ci.yml` (CMake matrix — Linux/macOS/Windows × Debug/Release ×
-gcc/clang/MSVC, plus dedicated OpenMP/TBB backend jobs — and a Bazel build+test job),
-`coverage.yml` (gcov/gcovr line-coverage report, threshold-gated, uploaded to Codecov),
-`lint.yml` (codespell), and `sanitizers.yml` (ASan/UBSan; advisory — see note below).
+[`.github/workflows/`](../../.github/workflows/): `ci.yml` — a `cmake` job covering Debug **and** Release on every
+platform (gcc + clang on Linux, AppleClang on macOS, MSVC on Windows; 8 jobs), a `cmake-backends` job covering the
+OpenMP and TBB backends across all three platforms and both build types (12 jobs, each asserting via
+`CMakeCache.txt` that the backend was actually enabled rather than silently falling back to `std`), and a Bazel
+build+test job (Linux only). `coverage.yml` (gcov/gcovr line-coverage report, threshold-gated, uploaded to
+Codecov), `lint.yml` (codespell), and `sanitizers.yml` (ASan/UBSan; advisory — see note below).
 
 Reproduce coverage locally:
 
@@ -84,27 +90,18 @@ Starlark: [`bazel/parallel.bzl`](../../bazel/parallel.bzl). `config_setting` nam
 
 | Define | `config_setting` | Effect |
 |--------|------------------|--------|
-| `parallel_backend` | `openmp` → `//bazel:parallel_backend_openmp`; `tbb` → `//bazel:parallel_backend_tbb` | Same role as CMake `PARALLEL_BACKEND`: selects OpenMP vs TBB vs default **std** thread backend (`parallel_backend=std` in root `.bazelrc`). |
+| `parallel_backend` | `openmp` → `//bazel:parallel_backend_openmp`; `tbb` → `//bazel:parallel_backend_tbb` | Same role as CMake `PARALLEL_BACKEND`: selects OpenMP vs TBB vs the default **std** thread backend (no `config_setting` matches → each `select()`'s `//conditions:default` branch). |
 | `parallel_enable_openmp` | `//bazel:enable_openmp` | **Legacy** alias: `PARALLEL_HAS_OPENMP=1` when `parallel_backend` is not already `openmp`. |
 | `parallel_enable_tbb` | `//bazel:parallel_enable_tbb` | **Legacy** alias: `PARALLEL_HAS_TBB=1` when `parallel_backend` is not already `tbb`. |
 
 `parallel.bzl` and `BUILD.bazel` use Skylib `selects.with_or` so **`parallel_backend=*` OR the matching legacy `parallel_enable_*`** turns on the same backend. If both OpenMP and TBB flags were true, TBB source selection wins (avoid that — match CMake exclusivity).
 
-**`build:openmp`** sets `parallel_backend=openmp`, keeps `parallel_enable_openmp=true`, and adds `-fopenmp` / link flags. **`build:tbb`** sets `parallel_backend=tbb` and `memory_enable_tbb=true` (TBB **allocator** is separate from the Parallel backend, same as CMake).
-
-**Memory** TBB **allocator** only: `memory_enable_tbb` → `//bazel:memory_enable_tbb`.
+`.bazelrc` provides named configs so backend selection reads the same way as CMake's `-DPARALLEL_BACKEND=`: **`bazel build --config=openmp`** sets `parallel_backend=openmp`; **`bazel build --config=tbb`** sets `parallel_backend=tbb`.
 
 ### Platform threads
 
 `PARALLEL_HAS_PTHREADS` / `PARALLEL_HAS_WIN32_THREADS` are chosen in `parallel.bzl` from `@platforms//os:windows` vs default (no `define`).
 
-### Other
-
-| Mechanism | Effect |
-|-----------|--------|
-| `parallel_enable_benchmark` | Default ON in `.bazelrc` (CMake parity) |
-| `enable_gtest` | Project-wide gtest defines |
-
 ### CMake-only
 
-`PARALLEL_CXX_STANDARD` → `c++20` in `parallel.bzl`. LTO, coverage, sanitizers, linker/cache, spell, Valgrind — **CMake only**.
+Benchmarks and tests aren't gated behind a define on the Bazel side — benchmark targets are generated per `Benchmark*.cpp` file and built on request (`bazel build //Parallel/Testing/Cxx:benchmark_<name>`), and the GoogleTest-based `ParallelCxxTests` target always links gtest. `PARALLEL_CXX_STANDARD` is fixed at `c++20` in `parallel.bzl` rather than configurable. LTO, coverage, sanitizers, linker/cache, spell, Valgrind — **CMake only**.

@@ -21,7 +21,7 @@
  *   Licensed under BSD-3-Clause
  */
 
-#include "std_thread/parallel_thread_pool.h"
+#include "Parallel/std_thread/parallel_thread_pool.h"
 
 #include <algorithm>
 #include <cassert>
@@ -31,7 +31,7 @@
 #include <limits>
 #include <memory>
 
-#include "common/parallel_tools_impl.h"
+#include "Parallel/common/parallel_tools_impl.h"
 
 namespace parallel
 {

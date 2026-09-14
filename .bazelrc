@@ -7,3 +7,10 @@ build --cxxopt=-std=c++20 --host_cxxopt=-std=c++20
 # Backend selection examples:
 #   bazel build //:Parallel --define=parallel_backend=tbb
 #   bazel build //:Parallel --define=parallel_backend=openmp
+
+# Named configs mirroring CMake's PARALLEL_BACKEND=openmp|tbb, so backend selection
+# reads the same way in both build systems:
+#   bazel build --config=openmp //:Parallel
+#   bazel build --config=tbb //:Parallel
+build:openmp --define=parallel_backend=openmp
+build:tbb --define=parallel_backend=tbb

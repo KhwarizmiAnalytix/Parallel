@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "ParallelTest.h"
-#include "tools/parallel_tools.h"
+#include "Parallel/tools/parallel_tools.h"
 
 namespace parallel
 {

@@ -53,7 +53,7 @@ set_property(CACHE PARALLEL_LTO_MODE PROPERTY STRINGS off thin full ipo auto)
 # this module only. LTO is automatically skipped when coverage is enabled.
 option(PARALLEL_ENABLE_COVERAGE "Enable coverage instrumentation for Parallel tests" OFF)
 
-# Testing — gates add_subdirectory(Testing/Cxx).
+# Testing — gates add_subdirectory(Parallel/Testing/Cxx).
 option(PARALLEL_ENABLE_TESTING "Build Parallel test suite" ON)
 
 # Examples — gates add_subdirectory(Examples) when Parallel examples exist.
@@ -216,8 +216,8 @@ list(FILTER parallel_sources EXCLUDE REGEX "^${CMAKE_CURRENT_SOURCE_DIR}/ThirdPa
 
 # Remove TBB backend files when TBB is not enabled.
 if(NOT PARALLEL_ENABLE_TBB)
-  file(GLOB_RECURSE TBB_PARALLEL_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/tbb/*.cpp")
-  file(GLOB_RECURSE TBB_PARALLEL_HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/tbb/*.h")
+  file(GLOB_RECURSE TBB_PARALLEL_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Parallel/tbb/*.cpp")
+  file(GLOB_RECURSE TBB_PARALLEL_HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Parallel/tbb/*.h")
   list(REMOVE_ITEM parallel_sources ${TBB_PARALLEL_SOURCE_FILES})
   list(REMOVE_ITEM parallel_headers ${TBB_PARALLEL_HEADER_FILES})
   message(STATUS "TBB disabled: excluding TBB parallel source files from build")
@@ -225,8 +225,8 @@ endif()
 
 # Remove OpenMP backend files when OpenMP is not enabled.
 if(NOT PARALLEL_ENABLE_OPENMP)
-  file(GLOB_RECURSE OPENMP_PARALLEL_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/openmp/*.cpp")
-  file(GLOB_RECURSE OPENMP_PARALLEL_HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/openmp/*.h")
+  file(GLOB_RECURSE OPENMP_PARALLEL_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Parallel/openmp/*.cpp")
+  file(GLOB_RECURSE OPENMP_PARALLEL_HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Parallel/openmp/*.h")
   list(REMOVE_ITEM parallel_sources ${OPENMP_PARALLEL_SOURCE_FILES})
   list(REMOVE_ITEM parallel_headers ${OPENMP_PARALLEL_HEADER_FILES})
   message(STATUS "OpenMP disabled: excluding OpenMP parallel source files from build")
@@ -266,20 +266,20 @@ else()
   target_compile_options(Parallel PRIVATE -include cstdlib)
 endif()
 
-# Include roots: Library/Parallel → "common/parallel_export.h", "tools/parallel_tools.h"
+# Include roots: repository root → "Parallel/common/parallel_export.h", "Parallel/tools/parallel_tools.h"
 target_include_directories(
   Parallel
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Testing>
-         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/Testing>
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Parallel/Testing>
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/Parallel/Testing>
          $<INSTALL_INTERFACE:include>
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/Testing/ParallelTest.h.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/Testing/ParallelTest.h" @ONLY
+  "${CMAKE_CURRENT_SOURCE_DIR}/Parallel/Testing/ParallelTest.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/Parallel/Testing/ParallelTest.h" @ONLY
 )
 
 if(PARALLEL_DEPENDENCY_INCLUDE_DIRS)
@@ -321,7 +321,7 @@ install(FILES ${parallel_headers} DESTINATION include/Parallel/Parallel COMPONEN
 
 # --- Testing ---
 if(PARALLEL_ENABLE_TESTING)
-  add_subdirectory(Testing/Cxx)
+  add_subdirectory(Parallel/Testing/Cxx)
 endif()
 
 if(PARALLEL_ENABLE_VALGRIND AND PARALLEL_ENABLE_TESTING)

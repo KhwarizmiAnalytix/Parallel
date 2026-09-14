@@ -21,14 +21,14 @@
  *   Licensed under BSD-3-Clause
  */
 
-#include "common/parallel_tools_api.h"
+#include "Parallel/common/parallel_tools_api.h"
 
 #include <algorithm>  // For std::toupper
 #include <cstdlib>    // For std::getenv
 #include <iostream>   // For std::cerr
 #include <string>     // For std::string
 
-#include "tools/parallel.h"
+#include "Parallel/tools/parallel.h"
 
 namespace parallel
 {

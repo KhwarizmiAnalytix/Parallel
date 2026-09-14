@@ -13,7 +13,7 @@
 #include <numeric>
 #include <vector>
 
-#include "tools/parallel_tools.h"
+#include "Parallel/tools/parallel_tools.h"
 
 namespace parallel
 {

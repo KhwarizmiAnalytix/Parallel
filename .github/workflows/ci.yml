@@ -25,13 +25,29 @@ jobs:
             os: ubuntu-latest
             build_type: Debug
             compiler: gcc
+          - name: ubuntu-gcc-release
+            os: ubuntu-latest
+            build_type: Release
+            compiler: gcc
+          - name: ubuntu-clang-debug
+            os: ubuntu-latest
+            build_type: Debug
+            compiler: clang
           - name: ubuntu-clang-release
             os: ubuntu-latest
             build_type: Release
             compiler: clang
+          - name: macos-debug
+            os: macos-latest
+            build_type: Debug
+            compiler: ""
           - name: macos-release
             os: macos-latest
             build_type: Release
+            compiler: ""
+          - name: windows-debug
+            os: windows-latest
+            build_type: Debug
             compiler: ""
           - name: windows-release
             os: windows-latest
@@ -82,15 +98,66 @@ jobs:
         run: ctest --output-on-failure --build-config ${{ matrix.build_type }} --timeout 300
 
   # ---------------------------------------------------------------------------
-  # Non-default SMP backends (std is covered by the matrix above).
+  # Non-default SMP backends (std is covered by the matrix above), across every
+  # platform and build type so a backend can't silently fall back to std when
+  # its library isn't found (Cmake/openmp.cmake and tbb_multithreading.cmake
+  # both disable the backend — and its sources — instead of failing).
   # ---------------------------------------------------------------------------
   cmake-backends:
-    name: cmake-backends (${{ matrix.backend }})
-    runs-on: ubuntu-latest
+    name: cmake-backends (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        backend: [openmp, tbb]
+        include:
+          - name: ubuntu-openmp-debug
+            os: ubuntu-latest
+            backend: openmp
+            build_type: Debug
+          - name: ubuntu-openmp-release
+            os: ubuntu-latest
+            backend: openmp
+            build_type: Release
+          - name: ubuntu-tbb-debug
+            os: ubuntu-latest
+            backend: tbb
+            build_type: Debug
+          - name: ubuntu-tbb-release
+            os: ubuntu-latest
+            backend: tbb
+            build_type: Release
+          - name: macos-openmp-debug
+            os: macos-latest
+            backend: openmp
+            build_type: Debug
+          - name: macos-openmp-release
+            os: macos-latest
+            backend: openmp
+            build_type: Release
+          - name: macos-tbb-debug
+            os: macos-latest
+            backend: tbb
+            build_type: Debug
+          - name: macos-tbb-release
+            os: macos-latest
+            backend: tbb
+            build_type: Release
+          - name: windows-openmp-debug
+            os: windows-latest
+            backend: openmp
+            build_type: Debug
+          - name: windows-openmp-release
+            os: windows-latest
+            backend: openmp
+            build_type: Release
+          - name: windows-tbb-debug
+            os: windows-latest
+            backend: tbb
+            build_type: Debug
+          - name: windows-tbb-release
+            os: windows-latest
+            backend: tbb
+            build_type: Release
 
     steps:
       - name: Checkout
@@ -98,27 +165,73 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Ninja
+      - name: Install Ninja (Linux/macOS)
+        if: runner.os != 'Windows'
         uses: seanmiddleditch/gha-setup-ninja@master
 
-      - name: Install backend dependencies
-        if: matrix.backend == 'tbb'
+      - name: Install backend dependencies (Linux TBB)
+        if: matrix.backend == 'tbb' && runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libtbb-dev
 
-      - name: Configure
+      - name: Install backend dependencies (macOS TBB)
+        if: matrix.backend == 'tbb' && runner.os == 'macOS'
+        run: brew install tbb
+
+      - name: Install backend dependencies (macOS OpenMP)
+        if: matrix.backend == 'openmp' && runner.os == 'macOS'
+        run: |
+          brew install libomp
+          echo "LIBOMP_PREFIX=$(brew --prefix libomp)" >> "$GITHUB_ENV"
+
+      # Windows TBB needs no explicit install step: tbb_multithreading.cmake
+      # falls back to fetching and building oneTBB from source, which works
+      # for MSVC (the default cl.exe toolchain on windows-latest) — only the
+      # Windows+Clang combination requires a pre-installed system TBB, and
+      # this matrix doesn't build with Clang on Windows. Windows OpenMP needs
+      # no setup either: MSVC has built-in /openmp support that CMake's
+      # FindOpenMP detects directly.
+
+      - name: Configure (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          args=(-S . -B build -G Ninja
+                -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+                -DPARALLEL_BACKEND=${{ matrix.backend }}
+                -DPARALLEL_ENABLE_TESTING=ON
+                -DPARALLEL_ENABLE_BENCHMARK=OFF)
+          if [ "${{ matrix.backend }}" = "openmp" ] && [ "${{ runner.os }}" = "macOS" ]; then
+            # AppleClang has no native OpenMP; point FindOpenMP at Homebrew's
+            # libomp explicitly (the standard workaround — FindOpenMP can't
+            # locate it on its own).
+            args+=(-DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp -I${LIBOMP_PREFIX}/include")
+            args+=(-DOpenMP_CXX_LIB_NAMES=omp)
+            args+=(-DOpenMP_omp_LIBRARY="${LIBOMP_PREFIX}/lib/libomp.dylib")
+          fi
+          cmake "${args[@]}"
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
         run: >
-          cmake -S . -B build -G Ninja
-          -DCMAKE_BUILD_TYPE=Debug
+          cmake -S . -B build -A x64
           -DPARALLEL_BACKEND=${{ matrix.backend }}
           -DPARALLEL_ENABLE_TESTING=ON
           -DPARALLEL_ENABLE_BENCHMARK=OFF
 
+      - name: Verify backend was actually selected
+        shell: bash
+        run: |
+          flag="PARALLEL_ENABLE_${{ matrix.backend == 'openmp' && 'OPENMP' || 'TBB' }}"
+          if ! grep -qi "^${flag}:BOOL=ON" build/CMakeCache.txt; then
+            echo "::error::${flag} is not ON in CMakeCache.txt — find_package fell back to the std backend instead of failing. Check the dependency install step for this job."
+            exit 1
+          fi
+
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build build --config ${{ matrix.build_type }} --parallel
 
       - name: Test
         working-directory: build
-        run: ctest --output-on-failure --timeout 300
+        run: ctest --output-on-failure --build-config ${{ matrix.build_type }} --timeout 300
 
   # ---------------------------------------------------------------------------
   # Bazel build + test (parity check against the CMake build).
@@ -147,7 +260,7 @@ jobs:
         # Scoped to our own packages: "//..." would also descend into the vendored
         # ThirdParty/benchmark/tools package, which needs rules_python (not a
         # dependency of this repo's Bazel build).
-        run: bazel build -- //:Parallel //Testing/...
+        run: bazel build -- //:Parallel //Parallel/Testing/...
 
       - name: Test
-        run: bazel test --test_output=errors -- //Testing/...
+        run: bazel test --test_output=errors -- //Parallel/Testing/...

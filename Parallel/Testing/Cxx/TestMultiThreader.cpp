@@ -14,7 +14,7 @@
 #include <vector>
 
 #include "ParallelTest.h"
-#include "tools/multi_threader.h"
+#include "Parallel/tools/multi_threader.h"
 
 namespace parallel
 {

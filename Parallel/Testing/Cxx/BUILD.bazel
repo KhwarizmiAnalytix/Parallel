@@ -2,7 +2,7 @@
 # Parallel Library Tests BUILD Configuration
 # =============================================================================
 # Test targets for the Parallel library using GoogleTest.
-# Equivalent to Testing/Cxx/CMakeLists.txt
+# Equivalent to Parallel/Testing/Cxx/CMakeLists.txt
 # =============================================================================
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
@@ -47,7 +47,7 @@ cc_test(
     linkopts = parallel_linkopts(),
     deps = [
         "//:Parallel",
-        "//Testing:parallelTest_header",
+        "//Parallel/Testing:parallelTest_header",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     ],
@@ -56,8 +56,8 @@ cc_test(
 # =============================================================================
 # Benchmark Targets
 # One cc_binary per Benchmark*.cpp file, named benchmark_<suffix_lowercased> —
-# mirrors the per-file foreach in Testing/Cxx/CMakeLists.txt (bench_sources loop).
-# Build with: bazel build //Testing/Cxx:benchmark_<suffix>
+# mirrors the per-file foreach in Parallel/Testing/Cxx/CMakeLists.txt (bench_sources loop).
+# Build with: bazel build //Parallel/Testing/Cxx:benchmark_<suffix>
 # =============================================================================
 
 [

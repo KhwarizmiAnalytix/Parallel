@@ -14,7 +14,7 @@
 #include <memory>  // For std::unique_ptr
 #include <mutex>   // For std::mutex
 
-#include "common/parallel_export.h"
+#include "Parallel/common/parallel_export.h"
 
 #ifndef PARALLEL_MAX_THREADS
 #define PARALLEL_MAX_THREADS 64

@@ -39,8 +39,8 @@
 #include <type_traits>  // For std::enable_if
 #include <utility>
 
-#include "common/parallel_export.h"
-#include "common/parallel_tools_api.h"
+#include "Parallel/common/parallel_export.h"
+#include "Parallel/common/parallel_tools_api.h"
 
 #if PARALLEL_HAS_TBB
 #include <tbb/enumerable_thread_specific.h>

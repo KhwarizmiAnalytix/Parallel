@@ -26,9 +26,9 @@
 #include <algorithm>   // For std::sort
 #include <functional>  // For std::bind
 
-#include "common/parallel_export.h"
-#include "common/parallel_tools_impl.h"
-#include "std_thread/parallel_thread_pool.h"  // For parallel_thread_pool
+#include "Parallel/common/parallel_export.h"
+#include "Parallel/common/parallel_tools_impl.h"
+#include "Parallel/std_thread/parallel_thread_pool.h"  // For parallel_thread_pool
 
 namespace parallel
 {
