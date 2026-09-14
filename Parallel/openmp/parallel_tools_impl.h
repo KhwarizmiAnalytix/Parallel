@@ -61,11 +61,13 @@ template <typename FunctorInternal>
 void parallel_tools_impl<backend_type::OpenMP>::parallel_for(
     size_t first, size_t last, size_t grain, FunctorInternal& fi)
 {
-    size_t n = last - first;
-    if (n <= 0)
+    // first > last (a reversed range) must be caught here: last - first would
+    // underflow (size_t is unsigned), and every callee below assumes first < last.
+    if (first >= last)
     {
         return;
     }
+    const size_t n = last - first;
 
     if (grain >= n)
     {

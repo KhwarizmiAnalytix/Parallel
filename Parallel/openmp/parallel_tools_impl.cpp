@@ -26,6 +26,7 @@
 #include <omp.h>
 
 #include <charconv>
+#include <cstddef>  // For std::ptrdiff_t
 #include <cstdlib>  // For std::getenv()
 #include <stack>    // For std::stack
 #include <string>
@@ -144,14 +145,29 @@ void parallel_tools_impl_for_openmp(
         grain = (estimate_grain > 0) ? estimate_grain : 1;
     }
 
-    omp_set_max_active_levels(static_cast<int>(nested_activated));
+    // MSVC's classic /openmp implements OpenMP 2.0 only: omp_set_max_active_levels()
+    // is OpenMP 3.0 API and isn't declared there. omp_set_nested() is OpenMP 2.0
+    // (present, if deprecated, in every OpenMP runtime this backend targets) and
+    // is semantically equivalent for our purposes: enable/disable a further level
+    // of nested parallel regions.
+    omp_set_nested(static_cast<int>(nested_activated));
 
 #pragma omp single
     get_thread_id_stack().emplace(omp_get_thread_num());
 
+    // MSVC's classic /openmp requires the omp-for loop counter to be a signed
+    // integral type -- a known MSVC-specific restriction stricter than the OpenMP
+    // spec itself (GCC/Clang accept size_t here). Iterate over a signed chunk
+    // index instead and derive each chunk's starting position inside the loop.
+    // Precondition: first < last (caller-enforced), so this is exact, no rounding
+    // loss from the unsigned subtraction below.
+    const std::ptrdiff_t num_chunks =
+        static_cast<std::ptrdiff_t>((last - first + grain - 1) / grain);
+
 #pragma omp parallel for schedule(runtime)
-    for (size_t from = first; from < last; from += grain)
+    for (std::ptrdiff_t chunk = 0; chunk < num_chunks; ++chunk)
     {
+        const size_t from = first + static_cast<size_t>(chunk) * grain;
         functor_executer(functor, from, grain, last);
     }
 

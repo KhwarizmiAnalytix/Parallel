@@ -214,6 +214,18 @@ list(FILTER parallel_sources EXCLUDE REGEX ".*/Testing/.*")
 list(FILTER parallel_headers EXCLUDE REGEX "^${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/")
 list(FILTER parallel_sources EXCLUDE REGEX "^${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/")
 
+# Keep the build directory itself out of the glob. When configured in-source-adjacent
+# (e.g. `cmake -S . -B build`, what CI does), FetchContent-downloaded dependencies land
+# under CMAKE_BINARY_DIR, inside the tree this glob scans. TBB's FetchContent (above, via
+# include(tbb_multithreading)) already runs before this glob, so without this exclusion
+# oneTBB's own examples/ sources get swept into parallel_sources and compiled as part of
+# this library -- harmless on platforms where they happen to no-op, but a hard compile
+# failure on MSVC (observed in CI). Anchored the same way as the ThirdParty/ filter above.
+if(CMAKE_BINARY_DIR MATCHES "^${CMAKE_CURRENT_SOURCE_DIR}/")
+  list(FILTER parallel_headers EXCLUDE REGEX "^${CMAKE_BINARY_DIR}/")
+  list(FILTER parallel_sources EXCLUDE REGEX "^${CMAKE_BINARY_DIR}/")
+endif()
+
 # Remove TBB backend files when TBB is not enabled.
 if(NOT PARALLEL_ENABLE_TBB)
   file(GLOB_RECURSE TBB_PARALLEL_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Parallel/tbb/*.cpp")

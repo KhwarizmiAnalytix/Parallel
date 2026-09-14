@@ -118,6 +118,14 @@ template <typename FunctorInternal>
 void parallel_tools_impl<backend_type::TBB>::parallel_for(
     size_t first, size_t last, size_t grain, FunctorInternal& fi)
 {
+    // first > last (a reversed range): return rather than rely on
+    // tbb::blocked_range(first, last, ...) treating it as empty on every TBB
+    // version (last - first would also underflow, size_t being unsigned).
+    if (first >= last)
+    {
+        return;
+    }
+
     if (!nested_activated_ && is_parallel_)
     {
         fi.Execute(first, last);
