@@ -11,36 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  codespell:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install codespell
-        run: pip install --user codespell
-
-      - name: Run codespell
-        run: >
-          codespell
-          --ignore-words=Scripts/suppressions/spell_suppressions.txt
-          --skip=".git,.github,ThirdParty,build,bazel-*"
-
-  clang-format:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install clang-format
-        run: sudo apt-get update && sudo apt-get install -y clang-format
-
-      - name: Check formatting (Parallel/, Testing/)
-        run: >
-          find Parallel Testing -type f \( -name "*.h" -o -name "*.cpp" -o -name "*.hxx" -o -name "*.cxx" \)
-          -print0 | xargs -0 clang-format --dry-run --Werror
-
-  clang-tidy:
+  lintrunner:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -51,15 +22,25 @@ jobs:
       - name: Install Ninja and clang-tidy
         run: sudo apt-get update && sudo apt-get install -y ninja-build clang-tidy
 
-      - name: Configure
-        # Testing + Benchmark ON so every source file that clang-tidy should check
+      - name: Configure (produces compile_commands.json for CLANGTIDY)
+        # Testing + Benchmark ON so every source file lintrunner should check
         # (library, tests, benchmarks) is actually part of the build.
         run: >
           cmake -S . -B build -G Ninja
           -DCMAKE_BUILD_TYPE=Debug
           -DPARALLEL_ENABLE_TESTING=ON
           -DPARALLEL_ENABLE_BENCHMARK=ON
-          -DPARALLEL_ENABLE_CLANGTIDY=ON
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-      - name: Build (clang-tidy runs per translation unit, warnings-as-errors)
-        run: cmake --build build --parallel
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install lintrunner
+        run: pip install lintrunner lint-tool
+
+      - name: Initialize lintrunner (downloads/pins clang-format, actionlint, pip tools)
+        run: lintrunner init
+
+      - name: Run lintrunner
+        run: lintrunner --all-files --force-color

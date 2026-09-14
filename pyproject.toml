@@ -1,0 +1,17 @@
+[tool.codespell]
+ignore-words = "Scripts/suppressions/spell_suppressions.txt"
+skip = ".git,.github,ThirdParty,build,build_*,bazel-*"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+exclude = ["ThirdParty/**", "build", "build_*"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+# E501 (line length) is inflexible about things like URLs and f-strings;
+# XSigma's own ruff config ignores it too, for the same reason.
+ignore = ["E501"]

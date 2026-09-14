@@ -11,8 +11,8 @@
 #include <atomic>
 #include <vector>
 
-#include "ParallelTest.h"
 #include "Parallel/parallel.h"
+#include "ParallelTest.h"
 
 namespace parallel
 {
@@ -85,7 +85,7 @@ PARALLELTEST(ParallelHeader, exposes_full_public_api)
 
     // threaded_task_queue
     {
-        auto                           worker = [](int x) { return x + 1; };
+        auto                          worker = [](int x) { return x + 1; };
         threaded_task_queue<int, int> queue(worker, true, -1, 2);
 
         queue.push(41);

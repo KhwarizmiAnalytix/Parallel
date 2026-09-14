@@ -13,8 +13,8 @@
 #include <thread>
 #include <vector>
 
-#include "ParallelTest.h"
 #include "Parallel/tools/multi_threader.h"
+#include "ParallelTest.h"
 
 namespace parallel
 {

@@ -110,8 +110,8 @@ static void BM_ParallelFor_Computation(benchmark::State& state)
             {
                 for (int i = begin; i < end; ++i)
                 {
-                    auto x = static_cast<double>(i);
-                    data[i]  = x * x + 2.0 * x + 1.0;
+                    auto x  = static_cast<double>(i);
+                    data[i] = x * x + 2.0 * x + 1.0;
                 }
             });
         benchmark::DoNotOptimize(data.data());

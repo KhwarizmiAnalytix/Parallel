@@ -39,7 +39,10 @@ except ImportError:  # Windows CLI smoke and some CI jobs skip pip install
     class Style:  # pylint: disable=too-few-public-methods
         RESET_ALL = ""
 
-from helpers import build as build_helper, config as config_helper, cppcheck as cppcheck_helper, test as test_helper
+from helpers import build as build_helper
+from helpers import config as config_helper
+from helpers import cppcheck as cppcheck_helper
+from helpers import test as test_helper
 
 DEBUG_FLAG = False
 
@@ -491,7 +494,8 @@ class ParallelFlags:
                     print_status(f"Setting linker to {linker_value}", "INFO")
                 else:
                     print_status(
-                        f"Unknown linker '{linker_value}'. Valid options: {', '.join(l for l in linker_list if l != 'default')}",
+                        f"Unknown linker '{linker_value}'. Valid options: "
+                        f"{', '.join(name for name in linker_list if name != 'default')}",
                         "ERROR",
                     )
                     sys.exit(1)

@@ -21,8 +21,8 @@
 #include <thread>
 #include <vector>
 
-#include "ParallelTest.h"
 #include "Parallel/tools/parallel_tools.h"
+#include "ParallelTest.h"
 
 namespace parallel
 {
@@ -515,7 +515,7 @@ PARALLELTEST(ParallelTools, parallel_reduce)
 {
     // Basic correctness: sum of 0..size-1 == size * (size - 1) / 2
     {
-        const size_t      size     = 10000;
+        const size_t      size = 10000;
         std::vector<long> data(size);
         for (size_t i = 0; i < size; ++i)
         {

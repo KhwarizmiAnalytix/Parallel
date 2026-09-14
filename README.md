@@ -263,21 +263,31 @@ gcovr --root . --exclude '.*/ThirdParty/.*' --exclude '.*/Testing/.*' --exclude 
 
 ### Linting
 
-[`.clang-format`](.clang-format) (Google-based, 4-space indent, Allman braces, 100-column) and
-[`.clang-tidy`](.clang-tidy) (bugprone/modernize/readability/misc, curated) apply to everything under
-`Parallel/` and `Testing/`. Reproduce both locally:
+[`lintrunner`](https://github.com/suo/lint-runner) (config: [`.lintrunner.toml`](.lintrunner.toml)) is
+the single entry point for every lint in this repo — clang-format, clang-tidy, codespell, cmake-format,
+cmakelint, GitHub Actions validation (`actionlint`), Bazel `WORKSPACE`/`.bzl` checks, trailing
+whitespace/tabs/final-newline, quoted-vs-angle-bracket third-party includes, and `ruff` for `Scripts/`:
 
 ```sh
-# Formatting — auto-fixable
-find Parallel Testing -type f \( -name "*.h" -o -name "*.cpp" \) -print0 | xargs -0 clang-format -i
-
-# Static analysis — needs a build (PARALLEL_ENABLE_CLANGTIDY wires it into every target's compile step)
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DPARALLEL_ENABLE_TESTING=ON -DPARALLEL_ENABLE_BENCHMARK=ON -DPARALLEL_ENABLE_CLANGTIDY=ON
-cmake --build build --parallel
+pip install lintrunner lint-tool
+lintrunner init   # downloads/pins clang-format, actionlint, and the pip-based linters
+lintrunner        # check everything
+lintrunner -a     # apply every auto-fixable finding (formatters) in place
 ```
 
-`PARALLEL_ENABLE_FIX=ON` alongside `PARALLEL_ENABLE_CLANGTIDY` additionally passes `-fix-errors -fix`,
-applying clang-tidy's suggested fixes directly to source files — review the diff before committing.
+`CLANGTIDY` needs a build first (it reads `compile_commands.json`):
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DPARALLEL_ENABLE_TESTING=ON -DPARALLEL_ENABLE_BENCHMARK=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build --parallel
+lintrunner --take CLANGTIDY
+```
+
+[`.clang-format`](.clang-format) (Google-based, 4-space indent, Allman braces, 100-column) and
+[`.clang-tidy`](.clang-tidy) (bugprone/modernize/readability/misc, curated) are also wired directly into
+the CMake build via `PARALLEL_ENABLE_CLANGTIDY` (`-fix-errors -fix` too, with `PARALLEL_ENABLE_FIX=ON` —
+review the diff before committing), independent of lintrunner, so clang-tidy runs as part of any build
+that turns it on, not just CI.
 
 > **Note:** `sanitizers.yml` is advisory (non-blocking, timeout-bounded). AddressSanitizer builds
 > cleanly but a full `ParallelCxxTests` run has been observed to hang (a spin-wait likely made

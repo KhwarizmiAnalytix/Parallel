@@ -31,3 +31,7 @@ coverage/
 # Python
 __pycache__/
 *.pyc
+
+# lintrunner
+.lintbin/
+.lintrunner.private.toml

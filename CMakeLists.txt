@@ -237,7 +237,9 @@ endif()
 
 # Remove OpenMP backend files when OpenMP is not enabled.
 if(NOT PARALLEL_ENABLE_OPENMP)
-  file(GLOB_RECURSE OPENMP_PARALLEL_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Parallel/openmp/*.cpp")
+  file(GLOB_RECURSE OPENMP_PARALLEL_SOURCE_FILES
+       "${CMAKE_CURRENT_SOURCE_DIR}/Parallel/openmp/*.cpp"
+  )
   file(GLOB_RECURSE OPENMP_PARALLEL_HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Parallel/openmp/*.h")
   list(REMOVE_ITEM parallel_sources ${OPENMP_PARALLEL_SOURCE_FILES})
   list(REMOVE_ITEM parallel_headers ${OPENMP_PARALLEL_HEADER_FILES})

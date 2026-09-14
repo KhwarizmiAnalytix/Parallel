@@ -12,8 +12,8 @@
 #include <thread>
 #include <vector>
 
-#include "ParallelTest.h"
 #include "Parallel/tools/threaded_task_queue.h"
+#include "ParallelTest.h"
 
 namespace parallel
 {

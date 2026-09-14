@@ -28,9 +28,9 @@ using thread_process_id_type = pthread_t;
 using multi_threader_id_type = pthread_t;
 #elif PARALLEL_HAS_WIN32_THREADS
 #ifndef NOMINMAX
-#define NOMINMAX  // Prevent windows.h's min/max macros from mangling std::min/std::max
-                   // wherever this header ends up in the same translation unit as callers
-                   // of those (e.g. Parallel/openmp/parallel_tools_impl.h via parallel.h).
+#define NOMINMAX  // Prevent windows.h's min/max macros from mangling std::min/std::max   \
+                  // wherever this header ends up in the same translation unit as callers \
+                  // of those (e.g. Parallel/openmp/parallel_tools_impl.h via parallel.h).
 #endif
 #include <windows.h>
 typedef HANDLE thread_process_id_type;
