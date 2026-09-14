@@ -25,3 +25,41 @@ jobs:
           codespell
           --ignore-words=Scripts/suppressions/spell_suppressions.txt
           --skip=".git,.github,ThirdParty,build,bazel-*"
+
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+
+      - name: Check formatting (Parallel/, Testing/)
+        run: >
+          find Parallel Testing -type f \( -name "*.h" -o -name "*.cpp" -o -name "*.hxx" -o -name "*.cxx" \)
+          -print0 | xargs -0 clang-format --dry-run --Werror
+
+  clang-tidy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Ninja and clang-tidy
+        run: sudo apt-get update && sudo apt-get install -y ninja-build clang-tidy
+
+      - name: Configure
+        # Testing + Benchmark ON so every source file that clang-tidy should check
+        # (library, tests, benchmarks) is actually part of the build.
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DPARALLEL_ENABLE_TESTING=ON
+          -DPARALLEL_ENABLE_BENCHMARK=ON
+          -DPARALLEL_ENABLE_CLANGTIDY=ON
+
+      - name: Build (clang-tidy runs per translation unit, warnings-as-errors)
+        run: cmake --build build --parallel

@@ -1,0 +1,22 @@
+BasedOnStyle: Google
+
+AccessModifierOffset: -4
+AlignAfterOpenBracket: AlwaysBreak
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AllowShortBlocksOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Inline
+BinPackParameters: false
+BinPackArguments: false
+BreakBeforeBraces: Allman
+ColumnLimit: 100
+CommentPragmas:  '^\*'
+DerivePointerAlignment: false
+FixNamespaceComments: true
+IndentCaseLabels: false
+IndentWidth: 4
+UseTab: Never
+ReflowComments: false
+PenaltyBreakComment: 100

@@ -249,7 +249,8 @@ platform (gcc + clang on Linux, AppleClang on macOS, MSVC on Windows; 8 jobs), a
 OpenMP and TBB backends across all three platforms and both build types (12 jobs, each asserting via
 `CMakeCache.txt` that the backend was actually enabled rather than silently falling back to `std`), and a Bazel
 build+test job (Linux only). `coverage.yml` (gcov/gcovr line-coverage report, threshold-gated, uploaded to
-Codecov), `lint.yml` (codespell), and `sanitizers.yml` (ASan/UBSan; advisory — see note below).
+Codecov), `lint.yml` (codespell, `clang-format --dry-run`, and a `clang-tidy` build — see below), and
+`sanitizers.yml` (ASan/UBSan; advisory — see note below).
 
 Reproduce coverage locally:
 
@@ -259,6 +260,24 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 gcovr --root . --exclude '.*/ThirdParty/.*' --exclude '.*/Testing/.*' --exclude '.*/build/.*' --html --html-details -o build/coverage/index.html
 ```
+
+### Linting
+
+[`.clang-format`](.clang-format) (Google-based, 4-space indent, Allman braces, 100-column) and
+[`.clang-tidy`](.clang-tidy) (bugprone/modernize/readability/misc, curated) apply to everything under
+`Parallel/` and `Testing/`. Reproduce both locally:
+
+```sh
+# Formatting — auto-fixable
+find Parallel Testing -type f \( -name "*.h" -o -name "*.cpp" \) -print0 | xargs -0 clang-format -i
+
+# Static analysis — needs a build (PARALLEL_ENABLE_CLANGTIDY wires it into every target's compile step)
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DPARALLEL_ENABLE_TESTING=ON -DPARALLEL_ENABLE_BENCHMARK=ON -DPARALLEL_ENABLE_CLANGTIDY=ON
+cmake --build build --parallel
+```
+
+`PARALLEL_ENABLE_FIX=ON` alongside `PARALLEL_ENABLE_CLANGTIDY` additionally passes `-fix-errors -fix`,
+applying clang-tidy's suggested fixes directly to source files — review the diff before committing.
 
 > **Note:** `sanitizers.yml` is advisory (non-blocking, timeout-bounded). AddressSanitizer builds
 > cleanly but a full `ParallelCxxTests` run has been observed to hang (a spin-wait likely made

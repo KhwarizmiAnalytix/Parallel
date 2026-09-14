@@ -1,0 +1,112 @@
+---
+HeaderFilterRegex: '^(?!.*(ThirdParty|experimental|Experimental)).*'  # Exclude third party and experimental folders from checks
+# Rationale for checks disabled below beyond the original baseline list
+# (kept here, not inline, because '#' inside the double-quoted Checks
+# string below is literal text, not a YAML comment, and a comment placed
+# between backslash-continued lines silently corrupts the following
+# glob entry instead of documenting it):
+#   bugprone-crtp-constructor-accessibility: CRTP base accessibility pattern used intentionally throughout the library
+#   bugprone-implicit-widening-of-multiplication-result: intentional widening multiplications in numeric/SIMD code
+#   bugprone-random-generator-seed: seeding patterns are controlled by the caller
+#   bugprone-reserved-identifier: internal header guards use reserved identifiers by convention
+#   bugprone-return-const-ref-from-parameter: const-ref return from parameter is an intentional design pattern here
+#   bugprone-std-namespace-modification: std namespace specializations (e.g. std::hash) are explicitly intended
+#   bugprone-throwing-static-initialization: static initializers with exceptions are acceptable in this codebase
+#   bugprone-unhandled-self-assignment: self-assignment handled at a higher level or intentionally omitted
+#   modernize-avoid-c-style-cast: C-style casts used in low-level/interop code intentionally
+#   modernize-avoid-variadic-functions: variadic functions used in logging/formatting interfaces
+#   modernize-macro-to-enum: macros kept as macros for cross-platform compatibility
+#   modernize-pass-by-value: pass-by-value would break existing API contracts
+#   modernize-return-braced-init-list: explicit construction preferred over braced-init-list for clarity
+#   modernize-unary-static-assert: single-argument static_assert kept for older compiler compatibility
+#   modernize-use-constraints: requires-clauses migration deferred to a dedicated refactor pass
+#   modernize-use-equals-default: explicitly defaulted functions require broader audit before enabling
+#   modernize-use-override: virtual override annotations pending a dedicated refactor pass
+#   modernize-use-scoped-lock: scoped_lock migration deferred; existing lock usage is correct
+#   modernize-use-using: typedef/using migration deferred to a dedicated refactor pass
+Checks: "-*,\
+bugprone-*,\
+-bugprone-unchecked-optional-access,\
+-bugprone-exception-escape,\
+-bugprone-narrowing-conversions,\
+-bugprone-easily-swappable-parameters,\
+-bugprone-macro-parentheses,\
+-bugprone-crtp-constructor-accessibility,\
+-bugprone-implicit-widening-of-multiplication-result,\
+-bugprone-random-generator-seed,\
+-bugprone-reserved-identifier,\
+-bugprone-return-const-ref-from-parameter,\
+-bugprone-std-namespace-modification,\
+-bugprone-throwing-static-initialization,\
+-bugprone-unhandled-self-assignment,\
+modernize-*,\
+-modernize-use-ranges,\
+-modernize-use-trailing-return-type,\
+-modernize-avoid-c-arrays,\
+-modernize-type-traits,\
+-modernize-concat-nested-namespaces,\
+-modernize-use-designated-initializers,\
+-modernize-use-integer-sign-comparison,\
+-modernize-use-equals-delete,\
+-modernize-use-nodiscard,\
+-modernize-use-default-member-init,\
+-modernize-avoid-c-style-cast,\
+-modernize-avoid-variadic-functions,\
+-modernize-macro-to-enum,\
+-modernize-pass-by-value,\
+-modernize-return-braced-init-list,\
+-modernize-unary-static-assert,\
+-modernize-use-constraints,\
+-modernize-use-equals-default,\
+-modernize-use-override,\
+-modernize-use-scoped-lock,\
+-modernize-use-using,\
+readability-*,\
+-readability-suspicious-call-argument,\
+-readability-deleted-default,\
+-readability-function-cognitive-complexity,\
+-readability-avoid-unconditional-preprocessor-if,\
+-readability-avoid-return-with-void-value,\
+-readability-avoid-nested-conditional-operator,\
+-readability-static-accessed-through-instance,\
+-readability-uppercase-literal-suffix,\
+-readability-magic-numbers,\
+-readability-identifier-length,\
+-readability-simplify-boolean-expr,\
+-readability-convert-member-functions-to-static,\
+-readability-use-concise-preprocessor-directives,\
+-readability-avoid-const-params-in-decls,\
+-readability-braces-around-statements,\
+-readability-container-contains,\
+-readability-else-after-return,\
+-readability-implicit-bool-conversion,\
+-readability-make-member-function-const,\
+-readability-math-missing-parentheses,\
+-readability-named-parameter,\
+-readability-qualified-auto,\
+-readability-redundant-access-specifiers,\
+-readability-redundant-declaration,\
+-readability-redundant-inline-specifier,\
+-readability-redundant-member-init,\
+-readability-redundant-parentheses,\
+-readability-redundant-typename,\
+misc-*,\
+-misc-include-cleaner,\
+-misc-use-anonymous-namespace,\
+-misc-no-recursion,\
+-misc-non-private-member-variables-in-classes,\
+-misc-header-include-cycle,\
+-misc-const-correctness,\
+-misc-multiple-inheritance,\
+-misc-unconventional-assign-operator,\
+-misc-unused-parameters,\
+-misc-use-internal-linkage,\
+"
+CheckOptions:
+  - key: readability-identifier-length.MinimumVariableNameLength
+    value: '2'
+  - key: readability-identifier-length.ParameterNameLength
+    value: '2'
+#WarningsAsErrors: "*"
+UseColor: true  # Enable colored output
+...

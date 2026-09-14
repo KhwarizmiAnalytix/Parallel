@@ -406,9 +406,9 @@ PARALLELTEST(ParallelThreadPool, thread_safety_and_concurrency)
         auto proxy = pool.allocate_threads(4);
 
         // Submit many jobs concurrently
-        for (size_t i = 0; i < counters.size(); ++i)
+        for (auto& counter : counters)
         {
-            proxy.do_job([&counters, i]() { counters[i].fetch_add(1, std::memory_order_relaxed); });
+            proxy.do_job([&counter]() { counter.fetch_add(1, std::memory_order_relaxed); });
         }
 
         proxy.join();

@@ -226,7 +226,7 @@ inline bool IsAligned(void* ptr, size_t alignment)
 
 inline bool ValidateMemory(const void* ptr, size_t size, uint8_t pattern)
 {
-    const uint8_t* bytes = static_cast<const uint8_t*>(ptr);
+    const auto* bytes = static_cast<const uint8_t*>(ptr);
     for (size_t i = 0; i < size; ++i)
     {
         if (bytes[i] != pattern)

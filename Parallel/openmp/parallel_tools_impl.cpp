@@ -161,8 +161,7 @@ void parallel_tools_impl_for_openmp(
     // index instead and derive each chunk's starting position inside the loop.
     // Precondition: first < last (caller-enforced), so this is exact, no rounding
     // loss from the unsigned subtraction below.
-    const std::ptrdiff_t num_chunks =
-        static_cast<std::ptrdiff_t>((last - first + grain - 1) / grain);
+    const auto num_chunks = static_cast<std::ptrdiff_t>((last - first + grain - 1) / grain);
 
 #pragma omp parallel for schedule(runtime)
     for (std::ptrdiff_t chunk = 0; chunk < num_chunks; ++chunk)

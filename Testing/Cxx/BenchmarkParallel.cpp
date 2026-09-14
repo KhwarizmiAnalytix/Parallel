@@ -110,7 +110,7 @@ static void BM_ParallelFor_Computation(benchmark::State& state)
             {
                 for (int i = begin; i < end; ++i)
                 {
-                    double x = static_cast<double>(i);
+                    auto x = static_cast<double>(i);
                     data[i]  = x * x + 2.0 * x + 1.0;
                 }
             });
@@ -190,7 +190,7 @@ static void BM_ComputeBound(benchmark::State& state)
             {
                 for (int i = begin; i < end; ++i)
                 {
-                    double x = static_cast<double>(i);
+                    auto x = static_cast<double>(i);
                     // Compute-intensive operation
                     data[i] = x * x * x + 3.0 * x * x + 3.0 * x + 1.0;
                 }

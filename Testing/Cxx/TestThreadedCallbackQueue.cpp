@@ -49,8 +49,8 @@ void RunThreads(int nthreadsBegin, int nthreadsEnd)
         queue->push(
             [&count, array, array2](const int& n, const double&&, char)
             {
-                array2->SetName(std::to_string(n).c_str());
-                array->SetName(std::to_string(n).c_str());
+                array2->SetName(std::to_string(n));
+                array->SetName(std::to_string(n));
                 ++count;
             },
             i,
@@ -119,10 +119,10 @@ bool TestFunctionTypeCompleteness()
         queue->push(a, A(), A());
 
         // Passing a pointer wrapped functor
-        queue->push(std::unique_ptr<A>(new A()), A(), A());
+        queue->push(std::make_unique<A>(), A(), A());
 
         // Passing a pointer wrapped object with a member function pointer
-        queue->push(&A::f, std::unique_ptr<A>(new A()), A(), A());
+        queue->push(&A::f, std::make_unique<A>(), A(), A());
 
         // Passing a std::function
         std::function<void(A&, A&&)> func = f;

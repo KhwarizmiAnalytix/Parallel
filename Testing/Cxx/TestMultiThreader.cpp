@@ -163,18 +163,18 @@ PARALLELTEST(MultiThreader, Test)
         mt->set_number_of_threads(4);
 
         std::atomic<int> counters[4];
-        for (int i = 0; i < 4; ++i)
+        for (auto& counter : counters)
         {
-            counters[i].store(0);
+            counter.store(0);
         }
 
         mt->set_single_method(thread_info_worker, counters);
         mt->single_method_execute();
 
         // Each thread should have executed once
-        for (int i = 0; i < 4; ++i)
+        for (auto& counter : counters)
         {
-            EXPECT_EQ(counters[i].load(), 1);
+            EXPECT_EQ(counter.load(), 1);
         }
 
         delete mt;
@@ -203,9 +203,9 @@ PARALLELTEST(MultiThreader, Test)
         mt->set_number_of_threads(4);
 
         std::atomic<int> counters[4];
-        for (int i = 0; i < 4; ++i)
+        for (auto& counter : counters)
         {
-            counters[i].store(0);
+            counter.store(0);
         }
 
         mt->set_multiple_method(0, method_0, counters);
@@ -216,9 +216,9 @@ PARALLELTEST(MultiThreader, Test)
         mt->multiple_method_execute();
 
         // Each method should have been called once
-        for (int i = 0; i < 4; ++i)
+        for (auto& counter : counters)
         {
-            EXPECT_EQ(counters[i].load(), 1);
+            EXPECT_EQ(counter.load(), 1);
         }
 
         delete mt;
@@ -258,9 +258,9 @@ PARALLELTEST(MultiThreader, Test)
         multi_threader* mt = multi_threader::create();
 
         std::atomic<int> counters[3];
-        for (int i = 0; i < 3; ++i)
+        for (auto& counter : counters)
         {
-            counters[i].store(0);
+            counter.store(0);
         }
 
         int thread_ids[3];

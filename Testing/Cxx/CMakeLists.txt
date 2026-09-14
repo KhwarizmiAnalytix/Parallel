@@ -56,6 +56,10 @@ endif()
 
 target_link_libraries(ParallelCxxTests PRIVATE Gtest::gtest Gtest::gtest_main Parallel::Parallel)
 
+if(PARALLEL_ENABLE_CLANGTIDY)
+  xsigma_target_clang_tidy(ParallelCxxTests ${PARALLEL_ENABLE_FIX})
+endif()
+
 set_target_properties(
   ParallelCxxTests PROPERTIES FOLDER "Tests" VS_DEBUGGER_WORKING_DIRECTORY
                                              "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
