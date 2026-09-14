@@ -42,6 +42,14 @@ include_patterns = [
 ]
 exclude_patterns = [
     'ThirdParty/**',
+    # This job's CMake configure builds the default (std) backend only, so
+    # compile_commands.json has no entry for openmp/tbb sources -- clang-tidy
+    # then guesses compiler flags for them and fails to find <omp.h> /
+    # <tbb/*.h> on a clean machine without those libraries installed
+    # (CMAKE's own PARALLEL_ENABLE_CLANGTIDY integration already covers these
+    # correctly when that specific backend is configured; see CMakeLists.txt).
+    'Parallel/openmp/**',
+    'Parallel/tbb/**',
 ]
 # Resolves clang-tidy from PATH — see the note on this same choice in
 # .clang-tidy / Cmake/clang_tidy.cmake: a pinned binary a few major versions
