@@ -7,6 +7,16 @@ source_folder = "."
 output_format = "html-and-json"
 coverage_report_dir = "coverage_report"
 min_coverage = 75.0
+# Parallel builds one flat library (libParallel.*) + one test executable
+# (ParallelCxxTests) across common/, tools/, std_thread/, openmp/, tbb/ rather
+# than XSigma's per-directory Library/<Module> layout. Without this override,
+# discover_modules() treats each source subdirectory as its own "module" and
+# looks for a matching lib<dir>.* + <dir>CxxTests — which only exist for
+# "Parallel" itself. The GCC/lcov backend ignores `modules` (whole-build-dir
+# capture) so CI's gcc job masked this; the Clang/LLVM backend (the default
+# here and for local dev) needs the explicit override to find the real
+# library and test binary.
+modules = ["Parallel"]
 
 [coverage.exclude]
 patterns = [
