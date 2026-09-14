@@ -49,7 +49,10 @@ void PARALLEL_API parallel_tools_impl_for_openmp(
 template <typename FunctorInternal>
 void execute_functor_openmp(void* functor, size_t from, size_t grain, size_t last)
 {
-    const size_t to = std::min(from + grain, last);
+    // Parenthesized to prevent windows.h's min macro (when NOMINMAX isn't defined by the
+    // time windows.h is first included, e.g. by a consumer that included it earlier) from
+    // matching this call -- same defensive idiom already used in the std_thread backend.
+    const size_t to = (std::min)(from + grain, last);
 
     FunctorInternal& fi = *reinterpret_cast<FunctorInternal*>(functor);
     fi.Execute(from, to);
