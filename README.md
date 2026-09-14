@@ -1,5 +1,9 @@
 # Parallel
 
+[![CI](https://github.com/KhwarizmiAnalytix/Parallel/actions/workflows/ci.yml/badge.svg)](https://github.com/KhwarizmiAnalytix/Parallel/actions/workflows/ci.yml)
+[![Coverage](https://github.com/KhwarizmiAnalytix/Parallel/actions/workflows/coverage.yml/badge.svg)](https://github.com/KhwarizmiAnalytix/Parallel/actions/workflows/coverage.yml)
+[![codecov](https://codecov.io/gh/KhwarizmiAnalytix/Parallel/branch/main/graph/badge.svg)](https://codecov.io/gh/KhwarizmiAnalytix/Parallel)
+
 **Parallel execution**: thread pools, task queues, multi-threader API, and **exclusive** SMP backends — **std::thread**, **OpenMP**, or **Intel TBB** (`PARALLEL_BACKEND` in CMake).
 
 Standalone CMake package — any C++ project can consume it via `add_subdirectory`;
@@ -46,6 +50,29 @@ See `Library/Parallel/Cmake/parallel_backend.cmake` for how flags are forced whe
 | `PARALLEL_CACHE_BACKEND` | none | compiler cache |
 
 Thread API macros (`PARALLEL_HAS_PTHREADS` / `PARALLEL_HAS_WIN32_THREADS`) are set from `threads.cmake`.
+
+---
+
+## CI
+
+[`.github/workflows/`](../../.github/workflows/): `ci.yml` (CMake matrix — Linux/macOS/Windows × Debug/Release ×
+gcc/clang/MSVC, plus dedicated OpenMP/TBB backend jobs — and a Bazel build+test job),
+`coverage.yml` (gcov/gcovr line-coverage report, threshold-gated, uploaded to Codecov),
+`lint.yml` (codespell), and `sanitizers.yml` (ASan/UBSan; advisory — see note below).
+
+Reproduce coverage locally:
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DPARALLEL_ENABLE_COVERAGE=ON -DPARALLEL_ENABLE_BENCHMARK=OFF
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+gcovr --root . --exclude '.*/ThirdParty/.*' --exclude '.*/Testing/.*' --exclude '.*/build/.*' --html --html-details -o build/coverage/index.html
+```
+
+> **Note:** `sanitizers.yml` is advisory (non-blocking, timeout-bounded). AddressSanitizer builds
+> cleanly but a full `ParallelCxxTests` run has been observed to hang (a spin-wait likely made
+> pathological by ASan's instrumentation slowdown) — UndefinedBehaviorSanitizer is clean. This is
+> a known open issue to investigate separately; it is not currently blocking CI.
 
 ---
 

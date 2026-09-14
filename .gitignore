@@ -14,6 +14,14 @@ DartConfiguration.tcl
 # Bazel
 bazel-*
 
+# Coverage
+*.gcda
+*.gcno
+*.gcov
+*.profraw
+*.profdata
+coverage/
+
 # IDE
 .idea/
 .vscode/

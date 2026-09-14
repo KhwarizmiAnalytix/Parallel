@@ -1,0 +1,90 @@
+name: Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: coverage-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Minimum acceptable line coverage. Measured baseline is ~90%; the floor
+  # is kept a bit below that so normal fluctuation doesn't flake CI.
+  COVERAGE_THRESHOLD: 75
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Install gcovr
+        run: pip install --user gcovr
+
+      - name: Configure
+        env:
+          CC: gcc
+          CXX: g++
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DPARALLEL_ENABLE_COVERAGE=ON
+          -DPARALLEL_ENABLE_TESTING=ON
+          -DPARALLEL_ENABLE_BENCHMARK=OFF
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        working-directory: build
+        run: ctest --output-on-failure --timeout 300
+
+      - name: Generate coverage report
+        run: |
+          mkdir -p build/coverage
+          python3 -m gcovr \
+            --root . \
+            --exclude '.*/ThirdParty/.*' \
+            --exclude '.*/Testing/.*' \
+            --exclude '.*/build/.*' \
+            --print-summary \
+            --html --html-details --output build/coverage/index.html \
+            --xml build/coverage/coverage.xml \
+            --txt build/coverage/summary.txt \
+            --fail-under-line "${COVERAGE_THRESHOLD}"
+
+      - name: Publish summary
+        if: always()
+        run: |
+          {
+            echo "### Coverage report"
+            echo '```'
+            cat build/coverage/summary.txt 2>/dev/null || echo "No summary produced."
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: build/coverage/
+          retention-days: 30
+
+      - name: Upload to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        continue-on-error: true
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: build/coverage/coverage.xml
+          fail_ci_if_error: false

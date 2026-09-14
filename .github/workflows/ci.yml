@@ -1,0 +1,153 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # CMake build + CTest across platforms/compilers/configurations.
+  # ---------------------------------------------------------------------------
+  cmake:
+    name: cmake (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu-gcc-debug
+            os: ubuntu-latest
+            build_type: Debug
+            compiler: gcc
+          - name: ubuntu-clang-release
+            os: ubuntu-latest
+            build_type: Release
+            compiler: clang
+          - name: macos-release
+            os: macos-latest
+            build_type: Release
+            compiler: ""
+          - name: windows-release
+            os: windows-latest
+            build_type: Release
+            compiler: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Select compiler (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            echo "CC=clang" >> "$GITHUB_ENV"
+            echo "CXX=clang++" >> "$GITHUB_ENV"
+          else
+            echo "CC=gcc" >> "$GITHUB_ENV"
+            echo "CXX=g++" >> "$GITHUB_ENV"
+          fi
+
+      - name: Install Ninja (Linux/macOS)
+        if: runner.os != 'Windows'
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Configure (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DPARALLEL_ENABLE_TESTING=ON
+          -DPARALLEL_ENABLE_BENCHMARK=ON
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        run: >
+          cmake -S . -B build -A x64
+          -DPARALLEL_ENABLE_TESTING=ON
+          -DPARALLEL_ENABLE_BENCHMARK=ON
+
+      - name: Build
+        run: cmake --build build --config ${{ matrix.build_type }} --parallel
+
+      - name: Test
+        working-directory: build
+        run: ctest --output-on-failure --build-config ${{ matrix.build_type }} --timeout 300
+
+  # ---------------------------------------------------------------------------
+  # Non-default SMP backends (std is covered by the matrix above).
+  # ---------------------------------------------------------------------------
+  cmake-backends:
+    name: cmake-backends (${{ matrix.backend }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [openmp, tbb]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Install backend dependencies
+        if: matrix.backend == 'tbb'
+        run: sudo apt-get update && sudo apt-get install -y libtbb-dev
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DPARALLEL_BACKEND=${{ matrix.backend }}
+          -DPARALLEL_ENABLE_TESTING=ON
+          -DPARALLEL_ENABLE_BENCHMARK=OFF
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        working-directory: build
+        run: ctest --output-on-failure --timeout 300
+
+  # ---------------------------------------------------------------------------
+  # Bazel build + test (parity check against the CMake build).
+  # ---------------------------------------------------------------------------
+  bazel:
+    name: bazel
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Bazelisk
+        uses: bazelbuild/setup-bazelisk@v3
+
+      - name: Mount Bazel cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/bazel
+          key: bazel-${{ runner.os }}-${{ hashFiles('MODULE.bazel', 'WORKSPACE.bazel', '.bazelrc') }}
+          restore-keys: |
+            bazel-${{ runner.os }}-
+
+      - name: Build
+        # Scoped to our own packages: "//..." would also descend into the vendored
+        # ThirdParty/benchmark/tools package, which needs rules_python (not a
+        # dependency of this repo's Bazel build).
+        run: bazel build -- //:Parallel //Testing/...
+
+      - name: Test
+        run: bazel test --test_output=errors -- //Testing/...

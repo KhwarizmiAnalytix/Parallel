@@ -6,6 +6,7 @@
 # =============================================================================
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_test")
 load("//bazel:parallel.bzl", "parallel_copts", "parallel_defines", "parallel_linkopts")
 
 package(default_visibility = ["//visibility:public"])

@@ -1,0 +1,57 @@
+name: Sanitizers
+
+# Advisory only: a hang or new finding here does not block merges (see
+# continue-on-error below), but is surfaced so regressions get noticed.
+# A prior investigation found ASan-instrumented ParallelCxxTests can hang
+# (spin-wait that becomes pathological under ASan's slowdown) -- the
+# timeout-minutes below turns that into a visible, bounded failure instead
+# of an indefinite CI hang.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: sanitizers-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sanitize:
+    name: sanitize (${{ matrix.sanitizer }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address, undefined]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Configure
+        env:
+          CC: clang
+          CXX: clang++
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DPARALLEL_ENABLE_TESTING=ON
+          -DPARALLEL_ENABLE_BENCHMARK=OFF
+          -DPARALLEL_ENABLE_SANITIZER=ON
+          -DPARALLEL_SANITIZER_TYPE=${{ matrix.sanitizer }}
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        working-directory: build
+        timeout-minutes: 10
+        run: ctest --output-on-failure --timeout 300
