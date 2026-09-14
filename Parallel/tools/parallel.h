@@ -30,6 +30,9 @@
  * which backend was selected at compile time via PARALLEL_BACKEND, for use by parallel_tools_api
  * and the per-backend parallel_tools_impl specializations. Client code does not need — and should
  * not need — to name a specific backend; use parallel_tools (Parallel/tools/parallel_tools.h).
+ *
+ * Not to be confused with Parallel/parallel.h (note the different directory) — that one is the
+ * public umbrella include; this one is internal, despite the shared filename.
  */
 
 #pragma once

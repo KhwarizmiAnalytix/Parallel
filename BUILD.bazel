@@ -21,6 +21,7 @@ filegroup(
     name = "parallel_hdrs",
     srcs = glob(
         [
+            "Parallel/*.h",
             "Parallel/tools/*.h",
             "Parallel/common/*.h",
         ],
