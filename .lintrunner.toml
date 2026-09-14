@@ -139,6 +139,9 @@ exclude_patterns = [
     'build/**',
     'build_*/**',
     '.gitmodules',
+    # Needs a literal tab in its own --pattern below to detect tabs at all —
+    # excluded the same way in XSigma's .lintrunner.toml, for the same reason.
+    '.lintrunner.toml',
 ]
 command = [
     'python3',
@@ -206,6 +209,7 @@ init_command = [
     'lint_tool.adapters.pip_init',
     '--dry-run={{DRYRUN}}',
     'cmakelang==0.6.13',
+    'pyyaml==6.0.2',
 ]
 is_formatter = true
 
