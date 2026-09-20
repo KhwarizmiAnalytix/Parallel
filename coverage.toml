@@ -8,8 +8,8 @@ output_format = "html-and-json"
 coverage_report_dir = "coverage_report"
 min_coverage = 75.0
 # Parallel builds one flat library (libParallel.*) + one test executable
-# (ParallelCxxTests) across Parallel/common/, Parallel/tools/, Parallel/std_thread/,
-# Parallel/openmp/, Parallel/tbb/ rather than XSigma's per-directory
+# (ParallelCxxTests) across include/common/, include/tools/, include/std_thread/,
+# include/openmp/, include/tbb/ rather than XSigma's per-directory
 # Library/<Module> layout. Without this override,
 # discover_modules() treats each source subdirectory as its own "module" and
 # looks for a matching lib<dir>.* + <dir>CxxTests — which only exist for

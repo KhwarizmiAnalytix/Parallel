@@ -1,8 +1,8 @@
 # Parallel
 
-Standalone C++ parallel execution library. Source lives in `Parallel/`;
+Standalone C++ parallel execution library. Source lives in `include/`;
 tests live in `Testing/Cxx/`. Use namespace `parallel` and `PARALLEL_*`
-export macros. Keep the public `Parallel/` include paths used by this repo.
+export macros. Keep the public `include/` include paths used by this repo.
 The std, OpenMP, and TBB backends are selected independently of any host
 project. Dependencies are under `ThirdParty/`.
 

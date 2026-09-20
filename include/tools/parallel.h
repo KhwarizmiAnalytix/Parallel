@@ -29,9 +29,9 @@
  * backend_type and default_backend are internal (parallel::detail::parallel_impl): they identify
  * which backend was selected at compile time via PARALLEL_BACKEND, for use by parallel_tools_api
  * and the per-backend parallel_tools_impl specializations. Client code does not need — and should
- * not need — to name a specific backend; use parallel_tools (Parallel/tools/parallel_tools.h).
+ * not need — to name a specific backend; use parallel_tools (include/tools/parallel_tools.h).
  *
- * Not to be confused with Parallel/parallel.h (note the different directory) — that one is the
+ * Not to be confused with include/parallel.h (note the different directory) — that one is the
  * public umbrella include; this one is internal, despite the shared filename.
  */
 

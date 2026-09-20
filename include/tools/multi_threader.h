@@ -14,7 +14,7 @@
 #include <memory>  // For std::unique_ptr
 #include <mutex>   // For std::mutex
 
-#include "Parallel/common/parallel_export.h"
+#include "include/common/parallel_export.h"
 
 #ifndef PARALLEL_MAX_THREADS
 #define PARALLEL_MAX_THREADS 64
@@ -30,7 +30,7 @@ using multi_threader_id_type = pthread_t;
 #ifndef NOMINMAX
 #define NOMINMAX  // Prevent windows.h's min/max macros from mangling std::min/std::max   \
                   // wherever this header ends up in the same translation unit as callers \
-                  // of those (e.g. Parallel/openmp/parallel_tools_impl.h via parallel.h).
+                  // of those (e.g. include/openmp/parallel_tools_impl.h via parallel.h).
 #endif
 #include <windows.h>
 typedef HANDLE thread_process_id_type;

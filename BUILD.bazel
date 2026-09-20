@@ -2,9 +2,9 @@
 # Parallel Library BUILD Configuration (standalone)
 # =============================================================================
 # Standalone parallel computing library. Include root is the repository root so that:
-#   "Parallel/common/parallel_export.h"     -> Parallel/common/parallel_export.h
-#   "Parallel/tools/parallel_tools.h"       -> Parallel/tools/parallel_tools.h
-#   "Parallel/common/parallel_tools_api.h"  -> Parallel/common/...
+#   "include/common/parallel_export.h"     -> include/common/parallel_export.h
+#   "include/tools/parallel_tools.h"       -> include/tools/parallel_tools.h
+#   "include/common/parallel_tools_api.h"  -> include/common/...
 # =============================================================================
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
@@ -21,9 +21,9 @@ filegroup(
     name = "parallel_hdrs",
     srcs = glob(
         [
-            "Parallel/*.h",
-            "Parallel/tools/*.h",
-            "Parallel/common/*.h",
+            "include/*.h",
+            "include/tools/*.h",
+            "include/common/*.h",
         ],
         allow_empty = True,
     ),
@@ -33,8 +33,8 @@ filegroup(
     name = "parallel_srcs",
     srcs = glob(
         [
-            "Parallel/tools/*.cpp",
-            "Parallel/common/*.cpp",
+            "include/tools/*.cpp",
+            "include/common/*.cpp",
         ],
         allow_empty = True,
     ),
@@ -57,12 +57,12 @@ cc_library(
         (
             "//bazel:parallel_backend_tbb",
             "//bazel:parallel_enable_tbb",
-        ): glob(["Parallel/tbb/*.cpp"], allow_empty = True),
+        ): glob(["include/tbb/*.cpp"], allow_empty = True),
         (
             "//bazel:parallel_backend_openmp",
             "//bazel:enable_openmp",
-        ): glob(["Parallel/openmp/*.cpp"], allow_empty = True),
-        "//conditions:default": glob(["Parallel/std_thread/*.cpp"], allow_empty = True),
+        ): glob(["include/openmp/*.cpp"], allow_empty = True),
+        "//conditions:default": glob(["include/std_thread/*.cpp"], allow_empty = True),
     }),
     hdrs = [
         ":parallel_hdrs",
@@ -70,12 +70,12 @@ cc_library(
         (
             "//bazel:parallel_backend_tbb",
             "//bazel:parallel_enable_tbb",
-        ): glob(["Parallel/tbb/*.h", "Parallel/tbb/*.hxx"], allow_empty = True),
+        ): glob(["include/tbb/*.h", "include/tbb/*.hxx"], allow_empty = True),
         (
             "//bazel:parallel_backend_openmp",
             "//bazel:enable_openmp",
-        ): glob(["Parallel/openmp/*.h", "Parallel/openmp/*.hxx"], allow_empty = True),
-        "//conditions:default": glob(["Parallel/std_thread/*.h", "Parallel/std_thread/*.hxx"], allow_empty = True),
+        ): glob(["include/openmp/*.h", "include/openmp/*.hxx"], allow_empty = True),
+        "//conditions:default": glob(["include/std_thread/*.h", "include/std_thread/*.hxx"], allow_empty = True),
     }),
     copts = parallel_copts(),
     defines = parallel_defines() + select({

@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: GPL-3.0-or-later OR Commercial
  *
- * Compile-check and smoke test for the "Parallel/parallel.h" umbrella header:
+ * Compile-check and smoke test for the "include/parallel.h" umbrella header:
  * verifies that including it alone (no individual per-class header includes)
  * exposes every public class documented in the README's Public API section.
  */
@@ -11,7 +11,7 @@
 #include <atomic>
 #include <vector>
 
-#include "Parallel/parallel.h"
+#include "include/parallel.h"
 #include "ParallelTest.h"
 
 namespace parallel

@@ -67,7 +67,7 @@
 #include <queue>
 #include <thread>
 
-#include "Parallel/common/parallel_export.h"
+#include "include/common/parallel_export.h"
 #include "multi_threader.h"
 
 // Undefine min/max macros from Windows headers if they were defined

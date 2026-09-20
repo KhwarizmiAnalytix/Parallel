@@ -14,22 +14,22 @@ Standalone CMake package — any C++ project can consume it via `add_subdirector
 ## Public API
 
 ```cpp
-#include "Parallel/parallel.h"
+#include "include/parallel.h"
 ```
 
 is the one include client code needs — it pulls in every public class (`parallel_tools`,
 `multi_threader`, `threaded_callback_queue`, `threaded_task_queue`), described below. Nothing else
-under `Parallel/` should be included directly: `Parallel/common/parallel_tools_impl.h`,
-`Parallel/common/parallel_tools_api.h`, `Parallel/tools/parallel.h`'s `backend_type` enum (not to be
-confused with the umbrella `Parallel/parallel.h` — different file, same base name), and everything
-under `Parallel/openmp/`, `Parallel/std_thread/`, `Parallel/tbb/` are backend-selection machinery,
+under `include/` should be included directly: `include/common/parallel_tools_impl.h`,
+`include/common/parallel_tools_api.h`, `include/tools/parallel.h`'s `backend_type` enum (not to be
+confused with the umbrella `include/parallel.h` — different file, same base name), and everything
+under `include/openmp/`, `include/std_thread/`, `include/tbb/` are backend-selection machinery,
 chosen automatically at compile time from `PARALLEL_BACKEND`. They live in the
 `parallel::detail::parallel_impl` namespace; `detail` is the convention marker that nothing in it is
 part of the public contract, and it can change shape without notice. (`parallel_tools_api`, the
 internal singleton `parallel_tools` forwards to, is literally documented as "Internal API" in its own
 test file — see [`Testing/Cxx/TestParallelToolsApi.cpp`](Testing/Cxx/TestParallelToolsApi.cpp) — for
 exactly this reason.) The only other header worth including directly is
-`Parallel/common/parallel_export.h`, and only if you need the `PARALLEL_API`/`PARALLEL_VISIBILITY`
+`include/common/parallel_export.h`, and only if you need the `PARALLEL_API`/`PARALLEL_VISIBILITY`
 macros yourself (e.g. to export your own symbols consistently across a shared-library boundary).
 
 ### The one entry point: `parallel_tools`
@@ -112,14 +112,14 @@ the combine step) — for most reductions it is simpler than writing this by han
 ## Advanced / other tools
 
 The rest of the library is special-purpose; most callers never need it. All three are independent of
-`parallel_tools` and, like it, already included by `Parallel/parallel.h` — the per-class header column
+`parallel_tools` and, like it, already included by `include/parallel.h` — the per-class header column
 below is only for reference (e.g. if you'd rather include just one class's header directly).
 
 | Header | Class | Use it for |
 |--------|-------|------------|
-| `Parallel/tools/multi_threader.h` | `multi_threader` | Running one function across N threads directly, or one function per thread |
-| `Parallel/tools/threaded_callback_queue.h` | `threaded_callback_queue` | Fire-and-forget or dependent async tasks, each returning a future-like handle |
-| `Parallel/tools/threaded_task_queue.h` | `threaded_task_queue<R, Args...>` | A fixed worker function fed a stream of inputs, producing a stream of outputs |
+| `include/tools/multi_threader.h` | `multi_threader` | Running one function across N threads directly, or one function per thread |
+| `include/tools/threaded_callback_queue.h` | `threaded_callback_queue` | Fire-and-forget or dependent async tasks, each returning a future-like handle |
+| `include/tools/threaded_task_queue.h` | `threaded_task_queue<R, Args...>` | A fixed worker function fed a stream of inputs, producing a stream of outputs |
 
 ### `multi_threader` — direct thread control
 
@@ -128,7 +128,7 @@ and your `user_data`) per thread instead of a `[first, last)` range. Useful when
 range, or each thread needs to run *different* code (`set_multiple_method`).
 
 ```cpp
-#include "Parallel/parallel.h"
+#include "include/parallel.h"
 
 void worker(void* data)
 {
@@ -156,7 +156,7 @@ arguments and returns immediately with a `shared_future`-like handle; the call r
 worker threads. `get()` blocks until that task's result is ready.
 
 ```cpp
-#include "Parallel/parallel.h"
+#include "include/parallel.h"
 
 threaded_callback_queue queue;
 queue.set_number_of_threads(4);                  // default is 1 — always set this
@@ -176,7 +176,7 @@ For the common case of "one fixed function, many calls, executed off the calling
 with the worker function, then `push` inputs and `pop`/`try_pop` outputs.
 
 ```cpp
-#include "Parallel/parallel.h"
+#include "include/parallel.h"
 
 auto worker = [](int x) { return x * 2; };
 threaded_task_queue<int, int> queue(worker, /*strict_ordering=*/true, /*buffer_size=*/-1,
@@ -195,14 +195,14 @@ specialization for fire-and-forget workers (no `pop`, only `push`/`is_empty`/`fl
 
 ## Layout
 
-Library sources live under `Parallel/` (the include root stays the repository root, so consumers
-use `#include "Parallel/parallel.h"` etc.); `Testing/` stays at the repository root:
+Library sources live under `include/` (the include root stays the repository root, so consumers
+use `#include "include/parallel.h"` etc.); `Testing/` stays at the repository root:
 
 - `CMakeLists.txt` — `PARALLEL_ENABLE_*`; backend from `Cmake/parallel_backend.cmake`.
 - `BUILD.bazel` — `//:Parallel`; backend sources via `select`.
-- `Parallel/parallel.h` — the public umbrella include (see "Public API" above).
-- `Parallel/common/`, `Parallel/tools/` — backend-agnostic core.
-- `Parallel/std_thread/`, `Parallel/openmp/`, `Parallel/tbb/` — backend code.
+- `include/parallel.h` — the public umbrella include (see "Public API" above).
+- `include/common/`, `include/tools/` — backend-agnostic core.
+- `include/std_thread/`, `include/openmp/`, `include/tbb/` — backend code.
 - `Testing/Cxx/` — tests and benchmarks (built only standalone).
 
 ---

@@ -21,7 +21,7 @@
  *   Licensed under BSD-3-Clause
  */
 
-#include "Parallel/common/parallel_tools_impl.h"
+#include "include/common/parallel_tools_impl.h"
 
 #include <atomic>
 #include <charconv>
@@ -29,7 +29,7 @@
 #include <string>
 #include <thread>  // For std::thread::hardware_concurrency()
 
-#include "Parallel/std_thread/parallel_tools_impl.h"
+#include "include/std_thread/parallel_tools_impl.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>

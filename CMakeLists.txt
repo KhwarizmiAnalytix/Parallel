@@ -228,8 +228,8 @@ endif()
 
 # Remove TBB backend files when TBB is not enabled.
 if(NOT PARALLEL_ENABLE_TBB)
-  file(GLOB_RECURSE TBB_PARALLEL_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Parallel/tbb/*.cpp")
-  file(GLOB_RECURSE TBB_PARALLEL_HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Parallel/tbb/*.h")
+  file(GLOB_RECURSE TBB_PARALLEL_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/tbb/*.cpp")
+  file(GLOB_RECURSE TBB_PARALLEL_HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/tbb/*.h")
   list(REMOVE_ITEM parallel_sources ${TBB_PARALLEL_SOURCE_FILES})
   list(REMOVE_ITEM parallel_headers ${TBB_PARALLEL_HEADER_FILES})
   message(STATUS "TBB disabled: excluding TBB parallel source files from build")
@@ -238,9 +238,9 @@ endif()
 # Remove OpenMP backend files when OpenMP is not enabled.
 if(NOT PARALLEL_ENABLE_OPENMP)
   file(GLOB_RECURSE OPENMP_PARALLEL_SOURCE_FILES
-       "${CMAKE_CURRENT_SOURCE_DIR}/Parallel/openmp/*.cpp"
+       "${CMAKE_CURRENT_SOURCE_DIR}/include/openmp/*.cpp"
   )
-  file(GLOB_RECURSE OPENMP_PARALLEL_HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Parallel/openmp/*.h")
+  file(GLOB_RECURSE OPENMP_PARALLEL_HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/openmp/*.h")
   list(REMOVE_ITEM parallel_sources ${OPENMP_PARALLEL_SOURCE_FILES})
   list(REMOVE_ITEM parallel_headers ${OPENMP_PARALLEL_HEADER_FILES})
   message(STATUS "OpenMP disabled: excluding OpenMP parallel source files from build")
@@ -280,7 +280,7 @@ else()
   target_compile_options(Parallel PRIVATE -include cstdlib)
 endif()
 
-# Include roots: repository root → "Parallel/common/parallel_export.h", "Parallel/tools/parallel_tools.h"
+# Include roots: repository root → "include/common/parallel_export.h", "include/tools/parallel_tools.h"
 target_include_directories(
   Parallel
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>

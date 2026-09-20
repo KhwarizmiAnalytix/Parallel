@@ -39,7 +39,7 @@
 #include <thread>      // For std::thread
 #include <vector>      // For std::vector
 
-#include "Parallel/common/parallel_export.h"
+#include "include/common/parallel_export.h"
 
 namespace parallel
 {

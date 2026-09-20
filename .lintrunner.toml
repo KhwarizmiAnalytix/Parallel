@@ -1,10 +1,10 @@
 [[linter]]
 code = 'CLANGFORMAT'
 include_patterns = [
-    'Parallel/**/*.h',
-    'Parallel/**/*.hxx',
-    'Parallel/**/*.cpp',
-    'Parallel/**/*.cxx',
+    'include/**/*.h',
+    'include/**/*.hxx',
+    'include/**/*.cpp',
+    'include/**/*.cxx',
     'Testing/**/*.h',
     'Testing/**/*.cpp',
 ]
@@ -34,9 +34,9 @@ is_formatter = true
 [[linter]]
 code = 'CLANGTIDY'
 include_patterns = [
-    'Parallel/**/*.h',
-    'Parallel/**/*.hxx',
-    'Parallel/**/*.cpp',
+    'include/**/*.h',
+    'include/**/*.hxx',
+    'include/**/*.cpp',
     'Testing/**/*.h',
     'Testing/**/*.cpp',
 ]
@@ -48,8 +48,8 @@ exclude_patterns = [
     # <tbb/*.h> on a clean machine without those libraries installed
     # (CMAKE's own PARALLEL_ENABLE_CLANGTIDY integration already covers these
     # correctly when that specific backend is configured; see CMakeLists.txt).
-    'Parallel/openmp/**',
-    'Parallel/tbb/**',
+    'include/openmp/**',
+    'include/tbb/**',
 ]
 # Resolves clang-tidy from PATH — see the note on this same choice in
 # .clang-tidy / Cmake/clang_tidy.cmake: a pinned binary a few major versions
@@ -280,12 +280,12 @@ command = [
 [[linter]]
 code = 'TPINCLUDE'
 # Quoted #include of a ThirdParty / well-known external header. Project
-# headers stay quoted (Parallel/... paths); vendored/system libraries use
+# headers stay quoted (include/... paths); vendored/system libraries use
 # angle brackets.
 include_patterns = [
-    'Parallel/**/*.h',
-    'Parallel/**/*.hxx',
-    'Parallel/**/*.cpp',
+    'include/**/*.h',
+    'include/**/*.hxx',
+    'include/**/*.cpp',
     'Testing/**/*.h',
     'Testing/**/*.cpp',
 ]

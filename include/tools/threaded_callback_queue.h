@@ -61,7 +61,7 @@
 #include <utility>        // For forward
 #include <vector>         // For vector
 
-#include "Parallel/common/parallel_export.h"
+#include "include/common/parallel_export.h"
 
 class PARALLEL_VISIBILITY threaded_callback_queue
 {

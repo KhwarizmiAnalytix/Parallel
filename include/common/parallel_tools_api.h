@@ -27,7 +27,7 @@
  *
  * parallel_tools_api resolves, at compile time, which backend (std::thread / OpenMP / TBB)
  * parallel_tools_impl<Backend> is instantiated with, and exposes that instance as a singleton.
- * Client code should use parallel_tools (Parallel/tools/parallel_tools.h) instead: this class,
+ * Client code should use parallel_tools (include/tools/parallel_tools.h) instead: this class,
  * and the parallel::detail::parallel_impl namespace it lives in, may change shape without notice.
  */
 
@@ -36,16 +36,16 @@
 #include <atomic>
 #include <memory>
 
-#include "Parallel/common/parallel_export.h"
-#include "Parallel/common/parallel_tools_impl.h"
-#include "Parallel/tools/parallel.h"
+#include "include/common/parallel_export.h"
+#include "include/common/parallel_tools_impl.h"
+#include "include/tools/parallel.h"
 
 #if PARALLEL_HAS_TBB
-#include "Parallel/tbb/parallel_tools_impl.h"
+#include "include/tbb/parallel_tools_impl.h"
 #elif PARALLEL_HAS_OPENMP
-#include "Parallel/openmp/parallel_tools_impl.h"
+#include "include/openmp/parallel_tools_impl.h"
 #else
-#include "Parallel/std_thread/parallel_tools_impl.h"
+#include "include/std_thread/parallel_tools_impl.h"
 #endif
 
 namespace parallel

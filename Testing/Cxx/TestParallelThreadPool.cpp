@@ -29,7 +29,7 @@
 // Only compile these tests for std_thread backend
 #if !PARALLEL_HAS_OPENMP && !PARALLEL_HAS_TBB
 
-#include "Parallel/std_thread/parallel_thread_pool.h"
+#include "include/std_thread/parallel_thread_pool.h"
 
 namespace parallel
 {

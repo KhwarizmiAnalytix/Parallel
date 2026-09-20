@@ -21,7 +21,7 @@
 #include <thread>
 #include <vector>
 
-#include "Parallel/tools/parallel_tools.h"
+#include "include/tools/parallel_tools.h"
 #include "ParallelTest.h"
 
 namespace parallel
