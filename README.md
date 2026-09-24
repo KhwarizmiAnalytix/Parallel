@@ -4,10 +4,88 @@
 [![Coverage](https://github.com/KhwarizmiAnalytix/Parallel/actions/workflows/coverage.yml/badge.svg)](https://github.com/KhwarizmiAnalytix/Parallel/actions/workflows/coverage.yml)
 [![codecov](https://codecov.io/gh/KhwarizmiAnalytix/Parallel/branch/main/graph/badge.svg)](https://codecov.io/gh/KhwarizmiAnalytix/Parallel)
 
-**Parallel execution**: thread pools, task queues, multi-threader API, and **exclusive** SMP backends — **std::thread**, **OpenMP**, or **Intel TBB** (`PARALLEL_BACKEND` in CMake).
+**C++ parallel execution library**: map-reduce, task queues, thread pools, and pluggable **SMP backends** — **std::thread**, **OpenMP**, or **Intel TBB**.
 
-Standalone CMake package — any C++ project can consume it via `add_subdirectory`;
-[XSigma](https://github.com/KhwarizmiAnalytix/Hisab) is one consumer, not a required host.
+A standalone, production-grade CMake package for any C++ project. No external runtime dependencies; backends are compile-time selectable.
+
+## Quick Start (Third-Party Integration)
+
+### Add to your CMake project
+
+```cmake
+# Option 1: Embedded (git submodule or downloaded)
+add_subdirectory(Parallel)
+target_link_libraries(MyApp PRIVATE Parallel::Parallel)
+
+# Option 2: Installed package
+find_package(Parallel CONFIG REQUIRED)
+target_link_libraries(MyApp PRIVATE Parallel::Parallel)
+```
+
+### Use in C++
+
+```cpp
+#include "include/parallel.h"
+
+// Map: process in parallel
+std::vector<int> data(1'000'000);
+parallel_tools::parallel_for(0, data.size(), /*grain=*/10'000,
+    [&](size_t first, size_t last) {
+        for (size_t i = first; i < last; ++i) data[i] *= 2;
+    });
+
+// Reduce: gather results in parallel
+double sum_sq = parallel_tools::parallel_reduce(
+    0, data.size(), /*grain=*/10'000, /*identity=*/0.0,
+    [&](size_t first, size_t last, double init) {
+        double partial = init;
+        for (size_t i = first; i < last; ++i) partial += data[i] * data[i];
+        return partial;
+    },
+    [](double a, double b) { return a + b; });
+```
+
+### Choose a backend
+
+Set `PARALLEL_BACKEND` when configuring (default: `std`):
+
+```bash
+# Standard library threads (portable, default)
+cmake -S . -B build
+
+# Intel TBB work-stealing (recommended for CPU-bound workloads)
+cmake -S . -B build -DPARALLEL_BACKEND=tbb
+
+# OpenMP directives (integrate with OpenMP-heavy codebases)
+cmake -S . -B build -DPARALLEL_BACKEND=openmp
+```
+
+All backends expose the same public API; backend selection is a build-time configuration.
+
+---
+
+## What You Get
+
+**Public API**: Single include `"include/parallel.h"` pulls in all four classes:
+
+| Class | Purpose | When to use |
+|-------|---------|------------|
+| `parallel_tools` | **Map-reduce on ranges** | 95% of cases; data-parallel iteration or fold |
+| `threaded_callback_queue` | Async tasks with futures and dependencies | Fire-and-forget or DAG-structured work |
+| `multi_threader` | Direct thread control with user data | Non-uniform work or per-thread state |
+| `threaded_task_queue<R,Args>` | Fixed worker + stream I/O | Single function, many invocations |
+
+**Guarantees**:
+- **Thread-safe**: `threaded_callback_queue::push()` and `parallel_reduce()` are thread-safe; safe to call from multiple threads.
+- **Exception-safe**: Exceptions in user functions propagate to the caller; partial results are cleaned up.
+- **Deterministic reduces**: Combining function must be associative & commutative (order-independent); results are unaffected by thread scheduling.
+- **Portable**: std::thread backend compiles everywhere; OpenMP and TBB are optional drop-ins.
+- **Zero configuration**: Call `parallel_for()` or `parallel_reduce()` immediately—no initialization required (though `initialize(num_threads)` is available).
+
+**Compile-time decisions** (not runtime branching):
+- Which backend is active (`std`, `openmp`, `tbb`)
+- C++ standard (11–23; default 20)
+- Exceptions enabled or disabled (Parallel doesn't add exception handling, only respects it)
 
 ---
 
