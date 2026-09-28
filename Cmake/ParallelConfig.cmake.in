@@ -1,0 +1,27 @@
+@PACKAGE_INIT@
+
+# Parallel CMake configuration file
+# Enables: find_package(Parallel REQUIRED)
+
+if(NOT TARGET Parallel::Parallel)
+  include("${CMAKE_CURRENT_LIST_DIR}/ParallelTargets.cmake")
+endif()
+
+# Report backend selection to downstream packages
+set(Parallel_BACKEND @PARALLEL_BACKEND@)
+set(Parallel_HAS_TBB @PARALLEL_ENABLE_TBB@)
+set(Parallel_HAS_OPENMP @PARALLEL_ENABLE_OPENMP@)
+
+# Provide helpful status message
+if(NOT Parallel_FIND_QUIETLY)
+  message(STATUS "Found Parallel: ${PACKAGE_PREFIX_DIR}")
+  message(STATUS "  Backend: ${Parallel_BACKEND}")
+  if(Parallel_HAS_TBB)
+    message(STATUS "  TBB support: enabled")
+  endif()
+  if(Parallel_HAS_OPENMP)
+    message(STATUS "  OpenMP support: enabled")
+  endif()
+endif()
+
+check_required_components(Parallel)

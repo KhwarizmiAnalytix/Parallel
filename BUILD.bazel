@@ -33,8 +33,8 @@ filegroup(
     name = "parallel_srcs",
     srcs = glob(
         [
-            "include/tools/*.cpp",
-            "include/common/*.cpp",
+            "src/tools/*.cpp",
+            "src/common/*.cpp",
         ],
         allow_empty = True,
     ),
@@ -57,12 +57,12 @@ cc_library(
         (
             "//bazel:parallel_backend_tbb",
             "//bazel:parallel_enable_tbb",
-        ): glob(["include/tbb/*.cpp"], allow_empty = True),
+        ): glob(["src/tbb/*.cpp"], allow_empty = True),
         (
             "//bazel:parallel_backend_openmp",
             "//bazel:enable_openmp",
-        ): glob(["include/openmp/*.cpp"], allow_empty = True),
-        "//conditions:default": glob(["include/std_thread/*.cpp"], allow_empty = True),
+        ): glob(["src/openmp/*.cpp"], allow_empty = True),
+        "//conditions:default": glob(["src/std_thread/*.cpp"], allow_empty = True),
     }),
     hdrs = [
         ":parallel_hdrs",

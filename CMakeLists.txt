@@ -228,7 +228,7 @@ endif()
 
 # Remove TBB backend files when TBB is not enabled.
 if(NOT PARALLEL_ENABLE_TBB)
-  file(GLOB_RECURSE TBB_PARALLEL_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/tbb/*.cpp")
+  file(GLOB_RECURSE TBB_PARALLEL_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/tbb/*.cpp")
   file(GLOB_RECURSE TBB_PARALLEL_HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/tbb/*.h")
   list(REMOVE_ITEM parallel_sources ${TBB_PARALLEL_SOURCE_FILES})
   list(REMOVE_ITEM parallel_headers ${TBB_PARALLEL_HEADER_FILES})
@@ -238,7 +238,7 @@ endif()
 # Remove OpenMP backend files when OpenMP is not enabled.
 if(NOT PARALLEL_ENABLE_OPENMP)
   file(GLOB_RECURSE OPENMP_PARALLEL_SOURCE_FILES
-       "${CMAKE_CURRENT_SOURCE_DIR}/include/openmp/*.cpp"
+       "${CMAKE_CURRENT_SOURCE_DIR}/src/openmp/*.cpp"
   )
   file(GLOB_RECURSE OPENMP_PARALLEL_HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/openmp/*.h")
   list(REMOVE_ITEM parallel_sources ${OPENMP_PARALLEL_SOURCE_FILES})
@@ -281,13 +281,14 @@ else()
 endif()
 
 # Include roots: repository root → "include/common/parallel_export.h", "include/tools/parallel_tools.h"
+# INSTALL_INTERFACE mirrors the install layout: <prefix>/include/Parallel/include/...
 target_include_directories(
   Parallel
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Testing>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/Testing>
-         $<INSTALL_INTERFACE:include>
+         $<INSTALL_INTERFACE:include/Parallel>
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -328,14 +329,58 @@ install(
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin
-  INCLUDES
-  DESTINATION include
+  INCLUDES DESTINATION include/Parallel
 )
-install(FILES ${parallel_headers} DESTINATION include/Parallel/Parallel COMPONENT Development)
+# Preserve include/ subdirectory structure so installed headers resolve the same
+# relative paths they use in the source tree (e.g. "include/common/parallel_export.h").
+install(
+  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
+  DESTINATION include/Parallel/include
+  COMPONENT Development
+  FILES_MATCHING
+    PATTERN "*.h"
+    PATTERN "*.hxx"
+    PATTERN "*.hpp"
+)
+
+# --- CMake Package Configuration Files ---
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/Cmake/ParallelConfig.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/ParallelConfig.cmake"
+  INSTALL_DESTINATION lib/cmake/Parallel
+  PATH_VARS CMAKE_INSTALL_PREFIX
+)
+
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/ParallelConfigVersion.cmake"
+  VERSION "${PROJECT_VERSION}"
+  COMPATIBILITY SameMajorVersion
+)
+
+install(
+  FILES "${CMAKE_CURRENT_BINARY_DIR}/ParallelConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/ParallelConfigVersion.cmake"
+  DESTINATION lib/cmake/Parallel
+  COMPONENT Development
+)
+
+install(
+  EXPORT ParallelTargets
+  NAMESPACE Parallel::
+  FILE ParallelTargets.cmake
+  DESTINATION lib/cmake/Parallel
+  COMPONENT Development
+)
 
 # --- Testing ---
 if(PARALLEL_ENABLE_TESTING)
   add_subdirectory(Testing/Cxx)
+endif()
+
+if(PARALLEL_ENABLE_EXAMPLES)
+  add_subdirectory(Examples)
 endif()
 
 if(PARALLEL_ENABLE_VALGRIND AND PARALLEL_ENABLE_TESTING)

@@ -21,7 +21,7 @@
  *   Licensed under BSD-3-Clause
  */
 
-#include "parallel_tools.h"
+#include "../../include/tools/parallel_tools.h"
 
 //------------------------------------------------------------------------------
 void parallel_tools::initialize(int num_threads)
