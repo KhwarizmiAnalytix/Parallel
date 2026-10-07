@@ -35,3 +35,4 @@ __pycache__/
 # lintrunner
 .lintbin/
 .lintrunner.private.toml
+.dmypy.json

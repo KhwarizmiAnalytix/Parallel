@@ -80,51 +80,51 @@ command = [
 # CMAKE CONFIGURATION
 # ==============================================================================
 
-# CMAKE linter disabled - requires config file
-# [[linter]]
-# code = 'CMAKE'
-# include_patterns = ['CMakeLists.txt', '**/*.cmake']
-# exclude_patterns = [
-#     'ThirdParty/**',
-#     '.git/**',
-#     'bazel-*/**',
-#     'build/**',
-#     'build_*/**',
-# ]
-# command = [
-#     'python3',
-#     '-m',
-#     'lint_tool.adapters.cmake_linter',
-#     '--',
-#     '@{{PATHSFILE}}',
-# ]
+[[linter]]
+code = 'CMAKE'
+include_patterns = ['CMakeLists.txt', '**/*.cmake']
+exclude_patterns = [
+    'ThirdParty/**',
+    '.git/**',
+    'bazel-*/**',
+    'build/**',
+    'build_*/**',
+]
+command = [
+    'python3',
+    '-m',
+    'lint_tool.adapters.cmake_linter',
+    '--config=.cmakelintrc',
+    '--',
+    '@{{PATHSFILE}}',
+]
 
-# CMAKEFORMAT linter disabled - requires config file
-# [[linter]]
-# code = 'CMAKEFORMAT'
-# include_patterns = ['CMakeLists.txt', '**/*.cmake']
-# exclude_patterns = [
-#     'ThirdParty/**',
-#     '.git/**',
-#     'bazel-*/**',
-#     'build/**',
-#     'build_*/**',
-# ]
-# init_command = [
-#     'python3',
-#     '-m',
-#     'lint_tool.adapters.pip_init',
-#     '--dry-run={{DRYRUN}}',
-#     'cmake-format>=0.6.0',
-# ]
-# command = [
-#     'python3',
-#     '-m',
-#     'lint_tool.adapters.cmake_format_linter',
-#     '--',
-#     '@{{PATHSFILE}}',
-# ]
-# is_formatter = true
+[[linter]]
+code = 'CMAKEFORMAT'
+include_patterns = ['CMakeLists.txt', '**/*.cmake']
+exclude_patterns = [
+    'ThirdParty/**',
+    '.git/**',
+    'bazel-*/**',
+    'build/**',
+    'build_*/**',
+]
+init_command = [
+    'python3',
+    '-m',
+    'lint_tool.adapters.pip_init',
+    '--dry-run={{DRYRUN}}',
+    'cmake-format>=0.6.0',
+]
+command = [
+    'python3',
+    '-m',
+    'lint_tool.adapters.cmake_format_linter',
+    '--config=.cmake-format.yaml',
+    '--',
+    '@{{PATHSFILE}}',
+]
+is_formatter = true
 
 [[linter]]
 code = 'CMAKE_MINIMUM_REQUIRED'
@@ -180,6 +180,7 @@ exclude_patterns = [
     'build/**',
     'build_*/**',
     '__pycache__/**',
+    'Scripts/setup.py',
 ]
 init_command = [
     'python3',
@@ -192,6 +193,7 @@ command = [
     'python3',
     '-m',
     'lint_tool.adapters.mypy_linter',
+    '--config=mypy.ini',
     '--',
     '@{{PATHSFILE}}',
 ]
@@ -205,6 +207,7 @@ exclude_patterns = [
     'build/**',
     'build_*/**',
     '__pycache__/**',
+    'Scripts/setup.py',
 ]
 init_command = [
     'python3',
@@ -217,7 +220,8 @@ command = [
     'python3',
     '-m',
     'lint_tool.adapters.mypy_linter',
-    '--strict',
+    '--config=mypy-strict.ini',
+    '--code=MYPYSTRICT',
     '--',
     '@{{PATHSFILE}}',
 ]
@@ -297,8 +301,7 @@ command = [
     'python3',
     '-m',
     'lint_tool.adapters.pyrefly_linter',
-    '--',
-    '@{{PATHSFILE}}',
+    '--config=pyrefly.toml',
 ]
 
 # IMPORT_LINTER disabled - package lint-import-linter not available
@@ -699,22 +702,16 @@ command = [
 
 [[linter]]
 code = 'TYPENOSKIP'
-include_patterns = ['**/*.py']
-exclude_patterns = [
-    'ThirdParty/**',
-    '.git/**',
-    'build/**',
-    '__pycache__/**',
-]
+include_patterns = ['mypy.ini']
 command = [
     'python3',
     '-m',
     'lint_tool.adapters.grep_linter',
-    '--pattern=no_skip_libs\|no_skip_check',
-    '--invert-match',
+    '--pattern=follow_imports\s*=\s*skip',
     '--linter-name=TYPENOSKIP',
-    '--error-name=type skip not configured',
-    '--error-description=Configure skip settings in mypy config.',
+    '--error-name=use of follow_imports = skip',
+    '--error-description=follow_imports = skip is forbidden from mypy.ini; it is too easy to accidentally turn off type checking. Use a top level # mypy: ignore-errors or per-site # type: ignore instead.',
     '--',
     '@{{PATHSFILE}}',
 ]
+
