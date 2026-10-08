@@ -288,7 +288,7 @@ target_include_directories(
          $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Testing>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/Testing>
-         $<INSTALL_INTERFACE:include/Parallel>
+         $<INSTALL_INTERFACE:include/Parallel/include>
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 

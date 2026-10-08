@@ -9,6 +9,9 @@
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
+load("@rules_pkg//pkg:pkg.bzl", "pkg_tar")
 load("//bazel:parallel.bzl", "parallel_copts", "parallel_defines", "parallel_linkopts")
 
 package(default_visibility = ["//visibility:public"])
@@ -126,4 +129,43 @@ cc_library(
         ":parallel_lib",
     ],
     visibility = ["//visibility:public"],
+)
+
+# =============================================================================
+# Install / export (bazel-side analogue of CMake's `install(TARGETS ...)` /
+# `install(DIRECTORY include/ DESTINATION include/Parallel/include ...)`).
+# `bazel build //:parallel_pkg_tar` produces a relocatable tarball; `bazel run
+# //:install -- --destdir=/some/prefix` stages the same tree directly on disk.
+# =============================================================================
+
+pkg_files(
+    name = "parallel_installed_hdrs",
+    srcs = glob(
+        ["include/**/*.h", "include/**/*.hxx", "include/**/*.hpp"],
+        allow_empty = True,
+    ),
+    prefix = "include/Parallel/include",
+    strip_prefix = strip_prefix.from_pkg("include"),
+)
+
+pkg_files(
+    name = "parallel_installed_libs",
+    srcs = [":parallel_lib"],
+    prefix = "lib",
+)
+
+pkg_tar(
+    name = "parallel_pkg_tar",
+    srcs = [
+        ":parallel_installed_hdrs",
+        ":parallel_installed_libs",
+    ],
+)
+
+pkg_install(
+    name = "install",
+    srcs = [
+        ":parallel_installed_hdrs",
+        ":parallel_installed_libs",
+    ],
 )

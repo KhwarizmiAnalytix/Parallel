@@ -3,6 +3,9 @@
 # Parallel CMake configuration file
 # Enables: find_package(Parallel REQUIRED)
 
+include(CMakeFindDependencyMacro)
+find_dependency(Threads)
+
 if(NOT TARGET Parallel::Parallel)
   include("${CMAKE_CURRENT_LIST_DIR}/ParallelTargets.cmake")
 endif()
