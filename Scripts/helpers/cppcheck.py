@@ -3,6 +3,7 @@ Cppcheck Static Analysis Helper Module
 This module handles static code analysis using cppcheck.
 """
 
+import glob
 import os
 import subprocess
 from dataclasses import dataclass
@@ -104,11 +105,23 @@ def build_cppcheck_command(
     # Only scan directories that exist (a fresh checkout always has all of them,
     # but keeps this robust if a backend directory is ever removed).
     scan_dirs = [d for d in _SOURCE_DIRS if os.path.isdir(os.path.join(source_path, d))]
+    # Parallel is header-only (no .cpp/.cxx anywhere), so cppcheck's own
+    # recursive directory scan — which only descends looking for files with
+    # recognized *source* extensions — finds nothing and exits with "could
+    # not find or open any of the paths given". Pass the headers explicitly.
+    scan_files: list[str] = []
+    for d in scan_dirs:
+        scan_files.extend(sorted(glob.glob(os.path.join(source_path, d, "**", "*.h"), recursive=True)))
 
     cmd = [
         "cppcheck",
-        *scan_dirs,
+        *scan_files,
         "--platform=unspecified",
+        # Header-only extensionless-of-.cpp library: force C++ parsing so
+        # cppcheck doesn't default these .h files to C (which misparses
+        # constructs like "namespace parallel{" as invalid C and reports a
+        # spurious syntaxError).
+        "--language=c++",
         "--enable=all",
         "--inline-suppr",
         "-q",
