@@ -1,10 +1,6 @@
 # Parallel
 
-Standalone C++ parallel execution library. Source lives in `include/`;
-tests live in `Testing/Cxx/`. Use namespace `parallel` and `PARALLEL_*`
-export macros. Keep the public `include/` include paths used by this repo.
-The std, OpenMP, and TBB backends are selected independently of any host
-project. Dependencies are under `ThirdParty/`.
+Standalone C++ parallel execution library. Source lives in `include/`; tests live in `Testing/Cxx/`. Use namespace `parallel` and `PARALLEL_*` export macros. Dependencies are under `ThirdParty/`.
 
 ## Shared agent guidance
 
@@ -48,18 +44,12 @@ For Bazel, also run from `Scripts/`:
 python3 setup_bazel.py config.build.test
 ```
 
-Use `--parallel.tbb` or `--parallel.openmp` for non-default backends.
-Confirm the selected backend was actually enabled; missing dependencies may
-cause a fallback. Both CMake and Bazel have setup helpers. See `README.md`
-for features that are available only through CMake.
-
 ## Test conventions
 
-Match adjacent `PARALLELTEST`, Google Test, or fixture-based cases
-and `ParallelTest.h`; do not replace the repository's own macros. Both
-`Testing/Cxx/CMakeLists.txt` and `Testing/Cxx/BUILD.bazel` filter tests by
-backend. Confirm an optional-backend test is enabled in the selected build.
-Concurrency tests must avoid timing-only assertions and busy waits.
+Match adjacent test cases and testing framework conventions in the repository.
+Tests use `Test*.cpp` or `Test*.cxx` under `Testing/Cxx/`; CMake uses a recursive glob
+while Bazel uses a package-local glob. Check exclusions and register new subdirectories
+in both systems when adding tests.
 
 ## Verification and scope
 
@@ -72,3 +62,21 @@ changes need frontmatter/link/whitespace validation, not compilation.
 Keep unrelated user edits and dependency sources intact. Share review
 findings in the response or pull request; do not create unsolicited status
 documents. Follow this repository's existing license and contribution policy.
+
+## CMake Configuration Message Alignment
+
+All `message("  LABEL : value")` configuration summary messages in CMakeLists.txt
+and `Cmake/lto.cmake` must align colons at exactly **24 characters from the opening
+quote** (inclusive).
+
+Format: `message("  LABEL{PADDING}: VALUE")`
+- Opening `"`: position 1
+- Two spaces + label + padding: positions 2-23 (22 chars total)
+- Colon `:`: position 24
+
+Example:
+```cmake
+message("  Icecc               : ${PARALLEL}_ENABLE_ICECC}")
+```
+
+This ensures all colons in configuration output form a vertical line for readability.
