@@ -3,6 +3,7 @@
 [![CI](https://github.com/KhwarizmiAnalytix/Parallel/actions/workflows/ci.yml/badge.svg)](https://github.com/KhwarizmiAnalytix/Parallel/actions/workflows/ci.yml)
 [![Coverage](https://github.com/KhwarizmiAnalytix/Parallel/actions/workflows/coverage.yml/badge.svg)](https://github.com/KhwarizmiAnalytix/Parallel/actions/workflows/coverage.yml)
 [![codecov](https://codecov.io/gh/KhwarizmiAnalytix/Parallel/branch/main/graph/badge.svg)](https://codecov.io/gh/KhwarizmiAnalytix/Parallel)
+[![License: GPL v3 / Commercial](https://img.shields.io/badge/license-GPL--3.0--or--later%20%2F%20commercial-blue.svg)](LICENSE)
 
 **C++ parallel execution library**: map-reduce, task queues, thread pools, and pluggable **SMP backends** — **std::thread**, **OpenMP**, or **Intel TBB**.
 
