@@ -11,13 +11,13 @@
 include_guard(GLOBAL)
 
 # -----------------------------------------------------------------------------
-# _create_third_party_interface_targets: Create namespaced aliases
+# parallel_create_third_party_interface_targets: Create namespaced aliases
 # -----------------------------------------------------------------------------
 # Creates namespaced aliases for third-party library targets (e.g.
 # "Benchmark::benchmark=benchmark::benchmark|benchmark" — each source target is
 # tried in order; IMPORTED targets get an INTERFACE wrapper since ALIAS cannot
 # alias IMPORTED).
-function(_create_third_party_interface_targets)
+function(parallel_create_third_party_interface_targets)
   set(xsigma_targets ${ARGN})
 
   if(NOT xsigma_targets)
@@ -93,12 +93,12 @@ function(_create_third_party_interface_targets)
 endfunction()
 
 # -----------------------------------------------------------------------------
-# _set_third_party_folder_properties: Set FOLDER property for all targets
+# parallel_set_third_party_folder_properties: Set FOLDER property for all targets
 # -----------------------------------------------------------------------------
 # Recursively collects all targets created under a binary directory and groups
 # them under "ThirdParty/<name>" in IDEs.
-function(_set_third_party_folder_properties name binary_dir)
-  function(_collect_targets_recursive dir collected_targets_var)
+function(parallel_set_third_party_folder_properties name binary_dir)
+  function(parallel_collect_targets_recursive dir collected_targets_var)
     get_property(dir_targets DIRECTORY "${dir}" PROPERTY BUILDSYSTEM_TARGETS)
 
     if(dir_targets)
@@ -108,13 +108,13 @@ function(_set_third_party_folder_properties name binary_dir)
     get_property(subdirs DIRECTORY "${dir}" PROPERTY SUBDIRECTORIES)
 
     foreach(subdir ${subdirs})
-      _collect_targets_recursive("${subdir}" local_targets)
+      parallel_collect_targets_recursive("${subdir}" local_targets)
     endforeach()
 
     set(${collected_targets_var} "${local_targets}" PARENT_SCOPE)
   endfunction()
 
-  _collect_targets_recursive("${binary_dir}" all_targets)
+  parallel_collect_targets_recursive("${binary_dir}" all_targets)
 
   if(all_targets)
     foreach(target ${all_targets})

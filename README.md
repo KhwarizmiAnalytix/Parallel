@@ -312,10 +312,30 @@ See [`Cmake/parallel_backend.cmake`](Cmake/parallel_backend.cmake) for how flags
 
 | CMake variable | Default | Notes |
 |----------------|---------|-------|
-| `PARALLEL_CXX_STANDARD` | 20 | `11`–`23` |
+| `PARALLEL_CXX_STANDARD` | 20 | `17`, `20`, `23` |
 | `PARALLEL_SANITIZER_TYPE` | address | if sanitizer ON |
 | `PARALLEL_LINKER_CHOICE` | default | linker |
 | `PARALLEL_CACHE_BACKEND` | none | compiler cache |
+
+CMake requires version 3.24 or newer. Compiler minimums follow the selected
+standard, matching LinearAlgebra:
+
+| C++ standard | GCC | LLVM Clang | AppleClang | MSVC |
+| --- | --- | --- | --- | --- |
+| 17 | 9.1 | 9 | 11 | 19.14 |
+| 20 | 10 | 11 | 13 | 19.29 |
+| 23 | 11 | 17 | 15 | 19.34 |
+
+Compiler requirements are checked on every configure. Tests default to ON
+for standalone builds and follow `BUILD_TESTING` when the host sets it;
+`BUILD_TESTING=OFF` disables this project's tests even if its own testing
+option is ON. Coverage and sanitizers apply to this project's targets,
+and disable LTO while enabled. Compiler caches and Icecream are configured
+per target; an explicitly selected cache must be installed.
+
+Run CMake configuration regression checks with
+`python3 Testing/CMake/check_configurations.py`.
+
 
 Thread API macros (`PARALLEL_HAS_PTHREADS` / `PARALLEL_HAS_WIN32_THREADS`) are set from `threads.cmake`.
 

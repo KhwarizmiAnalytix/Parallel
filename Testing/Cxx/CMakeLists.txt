@@ -2,7 +2,7 @@
 # Parallel Library C++
 # Tests
 # =============================================================================
-include(ParallelDependencies)
+include("${PARALLEL_SOURCE_DIR}/Cmake/ParallelDependencies.cmake")
 
 parallel_setup_gtest()
 
@@ -40,6 +40,12 @@ endforeach()
 # Executable
 # =============================================================================
 add_executable(ParallelCxxTests ${TestFiles})
+if(PARALLEL_ENABLE_COVERAGE)
+  parallel_configure_coverage(ParallelCxxTests)
+endif()
+if(PARALLEL_ENABLE_SANITIZER)
+  parallel_configure_sanitizer(ParallelCxxTests PARALLEL)
+endif()
 
 # PARALLEL_HAS_GTEST must be set so ParallelTest.h includes gtest (streaming EXPECT_EQ, SUCCEED,
 # etc.).
@@ -57,7 +63,7 @@ endif()
 target_link_libraries(ParallelCxxTests PRIVATE Gtest::gtest Gtest::gtest_main Parallel::Parallel)
 
 if(PARALLEL_ENABLE_CLANGTIDY)
-  xsigma_target_clang_tidy(ParallelCxxTests ${PARALLEL_ENABLE_FIX})
+  parallel_target_clang_tidy(ParallelCxxTests ${PARALLEL_ENABLE_FIX})
 endif()
 
 set_target_properties(
@@ -91,7 +97,7 @@ message(STATUS "  - Working directory: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 if(PARALLEL_ENABLE_BENCHMARK)
   # --- Google Benchmark setup ---
   parallel_setup_benchmark()
-  _create_third_party_interface_targets(
+  parallel_create_third_party_interface_targets(
     "Benchmark::benchmark=benchmark::benchmark|benchmark"
     "Benchmark::benchmark_main=benchmark::benchmark_main|benchmark_main"
   )
@@ -111,6 +117,12 @@ if(PARALLEL_ENABLE_BENCHMARK)
     set(target_name "benchmark_${bench_suffix_lower}")
 
     add_executable(${target_name} "${_bench_source}")
+    if(PARALLEL_ENABLE_COVERAGE)
+      parallel_configure_coverage(${target_name})
+    endif()
+    if(PARALLEL_ENABLE_SANITIZER)
+      parallel_configure_sanitizer(${target_name} PARALLEL)
+    endif()
 
     target_link_libraries(
       ${target_name} PRIVATE Benchmark::benchmark Benchmark::benchmark_main Parallel::Parallel

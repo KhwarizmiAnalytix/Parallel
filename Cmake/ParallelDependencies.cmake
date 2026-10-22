@@ -17,7 +17,7 @@
 
 include_guard(GLOBAL)
 
-include(third_party_helpers)
+include("${CMAKE_CURRENT_LIST_DIR}/third_party_helpers.cmake")
 
 option(PARALLEL_ENABLE_EXTERNAL "Prefer external/system third-party packages when available" ON)
 mark_as_advanced(PARALLEL_ENABLE_EXTERNAL)
@@ -63,7 +63,7 @@ function(parallel_setup_gtest)
     add_library(GTest::gtest_main ALIAS gtest_main)
   endif()
   # XSigma-style namespaced aliases used by this repo's test targets.
-  _create_third_party_interface_targets(
+  parallel_create_third_party_interface_targets(
     "Gtest::gtest=GTest::gtest|gtest" "Gtest::gtest_main=GTest::gtest_main|gtest_main"
   )
 endfunction()
@@ -117,5 +117,7 @@ function(parallel_setup_benchmark)
     )
     FetchContent_MakeAvailable(benchmark)
   endif()
-  _set_third_party_folder_properties("benchmark" "${CMAKE_BINARY_DIR}/ThirdParty/benchmark_build")
+  parallel_set_third_party_folder_properties(
+    "benchmark" "${CMAKE_BINARY_DIR}/ThirdParty/benchmark_build"
+  )
 endfunction()

@@ -10,7 +10,7 @@
 # PARALLEL_HAS_PTHREADS=1/0      — POSIX threads available PARALLEL_HAS_WIN32_THREADS=1/0 — Win32
 # native threading API used
 # =============================================================================
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.24)
 
 # Standalone CMake package — any C++ project can consume it via add_subdirectory;
 # XSigma is one consumer, not a required host.
@@ -23,8 +23,6 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     LANGUAGES CXX C
   )
   set(PARALLEL_STANDALONE ON)
-  include(CTest)
-  enable_testing()
   option(BUILD_SHARED_LIBS "Build shared libraries" ON)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
   set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
@@ -35,15 +33,16 @@ endif()
 
 # Own CMake modules: toolchain helpers (lto/cache/sanitize/...) and Parallel-owned
 # finders (threads/parallel_backend/openmp/tbb_multithreading) all live in Cmake/.
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Cmake")
+set(PARALLEL_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set(PARALLEL_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
 # --- Section 1: Feature flags (PARALLEL_ENABLE_*) --- TBB/OpenMP/thread flags are set by
 # module-owned finders in Section 3.
 
 # Link-Time Optimization — disabled when PARALLEL_ENABLE_COVERAGE or PARALLEL_ENABLE_SANITIZER is ON
 # (LTO conflicts with instrumentation / sanitizers).
-include(lto)
-xsigma_lto_compute_default(_lto_default PROFILE PERFORMANCE)
+include("${PARALLEL_SOURCE_DIR}/Cmake/lto.cmake")
+parallel_lto_compute_default(_lto_default PROFILE PERFORMANCE)
 set(PARALLEL_LTO_MODE "${_lto_default}"
     CACHE STRING "LTO mode for Parallel: off | thin | full | ipo | auto"
 )
@@ -54,7 +53,15 @@ set_property(CACHE PARALLEL_LTO_MODE PROPERTY STRINGS off thin full ipo auto)
 option(PARALLEL_ENABLE_COVERAGE "Enable coverage instrumentation for Parallel tests" OFF)
 
 # Testing — gates add_subdirectory(Testing/Cxx).
-option(PARALLEL_ENABLE_TESTING "Build Parallel test suite" ON)
+set(_parallel_testing_default ${PARALLEL_STANDALONE})
+if(DEFINED BUILD_TESTING)
+  set(_parallel_testing_default ${BUILD_TESTING})
+endif()
+option(PARALLEL_ENABLE_TESTING "Build Parallel test suite" ${_parallel_testing_default})
+# Respect the host's global veto, including on reconfigure.
+if(DEFINED BUILD_TESTING AND NOT BUILD_TESTING)
+  set(PARALLEL_ENABLE_TESTING OFF)
+endif()
 
 # Examples — gates add_subdirectory(Examples) when Parallel examples exist.
 option(PARALLEL_ENABLE_EXAMPLES "Build Parallel example programs" OFF)
@@ -102,10 +109,10 @@ set_property(CACHE PARALLEL_CACHE_BACKEND PROPERTY STRINGS none ccache sccache b
 mark_as_advanced(PARALLEL_CACHE_BACKEND)
 
 # C++ standard — applied to every TU in this module via CMAKE_CXX_STANDARD.
-set(PARALLEL_CXX_STANDARD "20" CACHE STRING "C++ standard for Parallel. Options: 11 14 17 20 23")
-set_property(CACHE PARALLEL_CXX_STANDARD PROPERTY STRINGS 11 14 17 20 23)
-if(NOT PARALLEL_CXX_STANDARD MATCHES "^(11|14|17|20|23)$")
-  message(FATAL_ERROR "PARALLEL_CXX_STANDARD must be one of: 11 14 17 20 23")
+set(PARALLEL_CXX_STANDARD "20" CACHE STRING "C++ standard for Parallel. Options: 17 20 23")
+set_property(CACHE PARALLEL_CXX_STANDARD PROPERTY STRINGS 17 20 23)
+if(NOT PARALLEL_CXX_STANDARD MATCHES "^(17|20|23)$")
+  message(FATAL_ERROR "PARALLEL_CXX_STANDARD must be one of: 17 20 23")
 endif()
 
 # --- Section 2: PARALLEL_ENABLE_* → PARALLEL_HAS_* compile definitions --- All ENABLE flags come
@@ -121,33 +128,47 @@ include(CheckCXXSourceRuns)
 include(CheckSymbolExists)
 
 # b) Shared toolchain helpers
-include(compiler_checks) # Detects compiler capabilities; sets PROJECT_* flags
-include(checks) # Additional feature-check macros
-include(build_type) # Validates / normalises CMAKE_BUILD_TYPE
-include(platform) # Platform flags (macOS rpath, Windows /utf-8, …)
+set(CMAKE_CXX_STANDARD ${PARALLEL_CXX_STANDARD})
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+include("${PARALLEL_SOURCE_DIR}/Cmake/checks.cmake") # Compiler and platform requirements
+include("${PARALLEL_SOURCE_DIR}/Cmake/build_type.cmake") # Validates / normalises CMAKE_BUILD_TYPE
+include("${PARALLEL_SOURCE_DIR}/Cmake/platform.cmake"
+)# Platform flags (macOS rpath, Windows /utf-8, …)
 include(CMakeDependentOption)
 
-include(cache) # Configures per-target compiler cache launcher
+include("${PARALLEL_SOURCE_DIR}/Cmake/cache.cmake") # Configures per-target compiler cache launcher
 
 # c) Parallel-owned feature finders (Library/Parallel/Cmake/)
-include(threads) # Detects pthreads / Win32 threads; sets PARALLEL_ENABLE_PTHREADS
-include(parallel_backend) # Validates PARALLEL_BACKEND; derives PARALLEL_ENABLE_TBB/OPENMP
-include(openmp) # Finds/configures OpenMP when PARALLEL_ENABLE_OPENMP=ON
-include(tbb_multithreading) # Finds/builds Intel TBB when PARALLEL_ENABLE_TBB=ON
+include("${PARALLEL_SOURCE_DIR}/Cmake/threads.cmake"
+)# Detects pthreads / Win32 threads; sets PARALLEL_ENABLE_PTHREADS
+include("${PARALLEL_SOURCE_DIR}/Cmake/parallel_backend.cmake"
+)# Validates PARALLEL_BACKEND; derives PARALLEL_ENABLE_TBB/OPENMP
+include("${PARALLEL_SOURCE_DIR}/Cmake/openmp.cmake"
+)# Finds/configures OpenMP when PARALLEL_ENABLE_OPENMP=ON
+include("${PARALLEL_SOURCE_DIR}/Cmake/tbb_multithreading.cmake"
+)# Finds/builds Intel TBB when PARALLEL_ENABLE_TBB=ON
 if(PARALLEL_ENABLE_SANITIZER)
-  include(sanitize)
+  include("${PARALLEL_SOURCE_DIR}/Cmake/sanitize.cmake")
 endif()
 if(PARALLEL_ENABLE_SPELL)
-  include(spell)
+  include("${PARALLEL_SOURCE_DIR}/Cmake/spell.cmake")
 endif()
 if(PARALLEL_ENABLE_VALGRIND)
-  include(valgrind)
+  include("${PARALLEL_SOURCE_DIR}/Cmake/valgrind.cmake")
 endif()
-include(helper_macros)
+include("${PARALLEL_SOURCE_DIR}/Cmake/helper_macros.cmake")
 
-# d) Coverage gate — appends -fprofile-instr-generate / --coverage; LTO already cleared above.
+if(PARALLEL_STANDALONE)
+  include(CTest)
+endif()
+if(PARALLEL_ENABLE_TESTING)
+  enable_testing()
+endif()
+
+# d) Target-scoped coverage; LTO is skipped when instrumentation is enabled.
 if(PARALLEL_ENABLE_COVERAGE)
-  include(coverage)
+  include("${PARALLEL_SOURCE_DIR}/Cmake/coverage.cmake")
 elseif(MSVC)
   string(APPEND CMAKE_EXE_LINKER_FLAGS " /DEBUG:FULL")
   string(APPEND CMAKE_SHARED_LINKER_FLAGS " /DEBUG:FULL")
@@ -155,28 +176,28 @@ endif()
 
 # --- Section 2 (continued): detection-based PARALLEL_HAS_* compile definitions ---
 
-# Intel TBB — set by include(tbb_multithreading).
+# Intel TBB — set by include("${PARALLEL_SOURCE_DIR}/Cmake/tbb_multithreading.cmake").
 if(PARALLEL_ENABLE_TBB)
   list(APPEND PARALLEL_COMPILE_DEFINITIONS PARALLEL_HAS_TBB=1)
 else()
   list(APPEND PARALLEL_COMPILE_DEFINITIONS PARALLEL_HAS_TBB=0)
 endif()
 
-# OpenMP — set by include(openmp).
+# OpenMP — set by include("${PARALLEL_SOURCE_DIR}/Cmake/openmp.cmake").
 if(PARALLEL_ENABLE_OPENMP)
   list(APPEND PARALLEL_COMPILE_DEFINITIONS PARALLEL_HAS_OPENMP=1)
 else()
   list(APPEND PARALLEL_COMPILE_DEFINITIONS PARALLEL_HAS_OPENMP=0)
 endif()
 
-# POSIX threads — set by include(threads) based on platform detection.
+# POSIX threads — set by include("${PARALLEL_SOURCE_DIR}/Cmake/threads.cmake") based on platform detection.
 if(PARALLEL_ENABLE_PTHREADS)
   list(APPEND PARALLEL_COMPILE_DEFINITIONS PARALLEL_HAS_PTHREADS=1)
 else()
   list(APPEND PARALLEL_COMPILE_DEFINITIONS PARALLEL_HAS_PTHREADS=0)
 endif()
 
-# Win32 threads — set by include(threads) on Windows.
+# Win32 threads — set by include("${PARALLEL_SOURCE_DIR}/Cmake/threads.cmake") on Windows.
 if(PARALLEL_ENABLE_WIN32_THREADS)
   list(APPEND PARALLEL_COMPILE_DEFINITIONS PARALLEL_HAS_WIN32_THREADS=1)
 else()
@@ -201,30 +222,8 @@ set(parallel_headers "")
 set(parallel_sources "")
 set(CMAKE_CXX_STANDARD ${PARALLEL_CXX_STANDARD})
 
-file(GLOB_RECURSE parallel_headers LIST_DIRECTORIES false "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
-file(GLOB_RECURSE parallel_sources LIST_DIRECTORIES false "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
-
-# Keep test sources out of the Parallel library target.
-list(FILTER parallel_headers EXCLUDE REGEX ".*/Testing/.*")
-list(FILTER parallel_sources EXCLUDE REGEX ".*/Testing/.*")
-
-# Keep vendored third-party sources (ThirdParty/ nested submodules) out of the library target.
-# Anchored at CMAKE_CURRENT_SOURCE_DIR: when embedded in XSigma the repo lives at
-# XSigma/ThirdParty/Parallel, so an unanchored ".*/ThirdParty/.*" would exclude everything.
-list(FILTER parallel_headers EXCLUDE REGEX "^${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/")
-list(FILTER parallel_sources EXCLUDE REGEX "^${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/")
-
-# Keep the build directory itself out of the glob. When configured in-source-adjacent
-# (e.g. `cmake -S . -B build`, what CI does), FetchContent-downloaded dependencies land
-# under CMAKE_BINARY_DIR, inside the tree this glob scans. TBB's FetchContent (above, via
-# include(tbb_multithreading)) already runs before this glob, so without this exclusion
-# oneTBB's own examples/ sources get swept into parallel_sources and compiled as part of
-# this library -- harmless on platforms where they happen to no-op, but a hard compile
-# failure on MSVC (observed in CI). Anchored the same way as the ThirdParty/ filter above.
-if(CMAKE_BINARY_DIR MATCHES "^${CMAKE_CURRENT_SOURCE_DIR}/")
-  list(FILTER parallel_headers EXCLUDE REGEX "^${CMAKE_BINARY_DIR}/")
-  list(FILTER parallel_sources EXCLUDE REGEX "^${CMAKE_BINARY_DIR}/")
-endif()
+file(GLOB_RECURSE parallel_headers LIST_DIRECTORIES false "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h")
+file(GLOB_RECURSE parallel_sources LIST_DIRECTORIES false "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 # Remove TBB backend files when TBB is not enabled.
 if(NOT PARALLEL_ENABLE_TBB)
@@ -237,9 +236,7 @@ endif()
 
 # Remove OpenMP backend files when OpenMP is not enabled.
 if(NOT PARALLEL_ENABLE_OPENMP)
-  file(GLOB_RECURSE OPENMP_PARALLEL_SOURCE_FILES
-       "${CMAKE_CURRENT_SOURCE_DIR}/src/openmp/*.cpp"
-  )
+  file(GLOB_RECURSE OPENMP_PARALLEL_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/openmp/*.cpp")
   file(GLOB_RECURSE OPENMP_PARALLEL_HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/openmp/*.h")
   list(REMOVE_ITEM parallel_sources ${OPENMP_PARALLEL_SOURCE_FILES})
   list(REMOVE_ITEM parallel_headers ${OPENMP_PARALLEL_HEADER_FILES})
@@ -248,13 +245,17 @@ endif()
 
 # --- Target definition ---
 add_library(Parallel ${parallel_sources} ${parallel_headers})
-xsigma_target_apply_lto(Parallel PARALLEL)
-if(PARALLEL_ENABLE_SANITIZER)
-  xsigma_configure_sanitizer(PARALLEL)
+target_compile_features(Parallel PUBLIC cxx_std_${PARALLEL_CXX_STANDARD})
+if(PARALLEL_ENABLE_COVERAGE)
+  parallel_configure_coverage(Parallel)
 endif()
-xsigma_find_linker(${PARALLEL_LINKER_CHOICE} Parallel PARALLEL_LTO_MODE)
-xsigma_target_apply_cache(Parallel PARALLEL_ENABLE_CACHE PARALLEL_CACHE_BACKEND)
-xsigma_target_optional_icecc(Parallel PARALLEL_ENABLE_ICECC)
+parallel_target_apply_cache(Parallel PARALLEL_ENABLE_CACHE PARALLEL_CACHE_BACKEND)
+parallel_target_apply_lto(Parallel PARALLEL)
+if(PARALLEL_ENABLE_SANITIZER)
+  parallel_configure_sanitizer(Parallel PARALLEL)
+endif()
+parallel_find_linker(${PARALLEL_LINKER_CHOICE} Parallel PARALLEL_LTO_MODE)
+parallel_target_optional_icecc(Parallel PARALLEL_ENABLE_ICECC)
 
 if(BUILD_SHARED_LIBS)
   target_compile_definitions(Parallel PUBLIC PARALLEL_SHARED_DEFINE PRIVATE PARALLEL_BUILDING_DLL)
@@ -267,7 +268,7 @@ endif()
 
 add_library(Parallel::Parallel ALIAS Parallel)
 
-xsigma_module_create_filters("${CMAKE_CURRENT_SOURCE_DIR}")
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${parallel_sources} ${parallel_headers})
 
 set_target_properties(
   Parallel PROPERTIES CXX_STANDARD ${PARALLEL_CXX_STANDARD} CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS
@@ -303,13 +304,13 @@ if(PARALLEL_DEPENDENCY_INCLUDE_DIRS)
 endif()
 
 if(PARALLEL_ENABLE_CLANGTIDY)
-  include(clang_tidy)
-  xsigma_target_clang_tidy(Parallel ${PARALLEL_ENABLE_FIX})
+  include("${PARALLEL_SOURCE_DIR}/Cmake/clang_tidy.cmake")
+  parallel_target_clang_tidy(Parallel ${PARALLEL_ENABLE_FIX})
 endif()
 
 if(PARALLEL_ENABLE_IWYU)
-  include(iwyu)
-  xsigma_apply_iwyu(Parallel)
+  include("${PARALLEL_SOURCE_DIR}/Cmake/iwyu.cmake")
+  parallel_apply_iwyu(Parallel)
 endif()
 
 if(PARALLEL_DEPENDENCY_LIBS)
@@ -329,7 +330,8 @@ install(
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin
-  INCLUDES DESTINATION include/Parallel
+  INCLUDES
+  DESTINATION include/Parallel
 )
 # Preserve include/ subdirectory structure so installed headers resolve the same
 # relative paths they use in the source tree (e.g. "include/common/parallel_export.h").
@@ -338,9 +340,9 @@ install(
   DESTINATION include/Parallel/include
   COMPONENT Development
   FILES_MATCHING
-    PATTERN "*.h"
-    PATTERN "*.hxx"
-    PATTERN "*.hpp"
+  PATTERN "*.h"
+  PATTERN "*.hxx"
+  PATTERN "*.hpp"
 )
 
 # --- CMake Package Configuration Files ---
@@ -348,22 +350,18 @@ include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/Cmake/ParallelConfig.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/ParallelConfig.cmake"
-  INSTALL_DESTINATION lib/cmake/Parallel
+  "${CMAKE_CURRENT_BINARY_DIR}/ParallelConfig.cmake" INSTALL_DESTINATION lib/cmake/Parallel
   PATH_VARS CMAKE_INSTALL_PREFIX
 )
 
 write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/ParallelConfigVersion.cmake"
-  VERSION "${PROJECT_VERSION}"
+  "${CMAKE_CURRENT_BINARY_DIR}/ParallelConfigVersion.cmake" VERSION "${PROJECT_VERSION}"
   COMPATIBILITY SameMajorVersion
 )
 
-install(
-  FILES "${CMAKE_CURRENT_BINARY_DIR}/ParallelConfig.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/ParallelConfigVersion.cmake"
-  DESTINATION lib/cmake/Parallel
-  COMPONENT Development
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/ParallelConfig.cmake"
+              "${CMAKE_CURRENT_BINARY_DIR}/ParallelConfigVersion.cmake"
+        DESTINATION lib/cmake/Parallel COMPONENT Development
 )
 
 install(
@@ -384,45 +382,8 @@ if(PARALLEL_ENABLE_EXAMPLES)
 endif()
 
 if(PARALLEL_ENABLE_VALGRIND AND PARALLEL_ENABLE_TESTING)
-  xsigma_apply_valgrind_timeouts()
+  parallel_apply_valgrind_timeouts()
 endif()
 
-if(PARALLEL_STANDALONE)
-  message("")
-  message("******** Parallel module (CMake flags) ********")
-  message("  Backend              : ${PARALLEL_BACKEND}")
-  if(NOT DEFINED PARALLEL_ENABLE_TBB)
-    message("  Tbb                  : OFF")
-  else()
-    message("  Tbb                  : ${PARALLEL_ENABLE_TBB}")
-  endif()
-  message("  Openmp               : ${PARALLEL_ENABLE_OPENMP}")
-  message("  Cxx standard         : ${PARALLEL_CXX_STANDARD}")
-  message("  Cache                : ${PARALLEL_ENABLE_CACHE}")
-  message("  Cache backend        : ${PARALLEL_CACHE_BACKEND}")
-  message("  Icecc                : ${PARALLEL_ENABLE_ICECC}")
-  xsigma_print_lto_linker_summary(PARALLEL)
-  message("  Coverage             : ${PARALLEL_ENABLE_COVERAGE}")
-  message("  Testing              : ${PARALLEL_ENABLE_TESTING}")
-  message("  Examples             : ${PARALLEL_ENABLE_EXAMPLES}")
-  message("  Gtest                : ${PARALLEL_ENABLE_GTEST}")
-  message("  Benchmark            : ${PARALLEL_ENABLE_BENCHMARK}")
-  message("  Clang-tidy           : ${PARALLEL_ENABLE_CLANGTIDY}")
-  message("  Fix                  : ${PARALLEL_ENABLE_FIX}")
-  message("  Iwyu                 : ${PARALLEL_ENABLE_IWYU}")
-  message("  Sanitizer            : ${PARALLEL_ENABLE_SANITIZER}")
-  message("  Sanitizer type       : ${PARALLEL_SANITIZER_TYPE}")
-  message("  Spell                : ${PARALLEL_ENABLE_SPELL}")
-  message("  Valgrind             : ${PARALLEL_ENABLE_VALGRIND}")
-  message("")
-  message("Build:")
-  message("  Default C++ standard : ${CMAKE_CXX_STANDARD}")
-  message("  C flags              : ${CMAKE_C_FLAGS}")
-  message("  CXX flags            : ${CMAKE_CXX_FLAGS}")
-  message("  Shared linker flags  : ${CMAKE_SHARED_LINKER_FLAGS}")
-  message("  Static linker flags  : ${CMAKE_STATIC_LINKER_FLAGS}")
-  message("  Module linker flags  : ${CMAKE_MODULE_LINKER_FLAGS}")
-  get_directory_property(_summary_compile_defs DIRECTORY ${PROJECT_SOURCE_DIR} COMPILE_DEFINITIONS)
-  message("  Top-level compile defs : ${_summary_compile_defs}")
-  message("")
-endif()
+include("${PARALLEL_SOURCE_DIR}/Cmake/summary.cmake")
+parallel_print_configuration_summary()
