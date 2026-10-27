@@ -234,6 +234,131 @@ jobs:
         run: ctest --output-on-failure --build-config ${{ matrix.build_type }} --timeout 300
 
   # ---------------------------------------------------------------------------
+  # Compiler-cache and Icecream (icecc) coverage across platforms. Exercises
+  # PARALLEL_ENABLE_CACHE/PARALLEL_CACHE_BACKEND (ccache, sccache) and
+  # PARALLEL_ENABLE_ICECC so broken cache/icecc wiring (Cmake/cache.cmake,
+  # Cmake/helper_macros.cmake) fails CI instead of only showing up on a
+  # developer's machine. Windows entries use Ninja + a vcvars-initialized
+  # cl.exe rather than this repo's usual -A x64 VS generator: CMake's
+  # COMPILER_LAUNCHER property is only honored by the Makefile/Ninja
+  # generators, so the VS generator would silently no-op the launcher and the
+  # job would pass without testing anything. buildcache is a valid
+  # PARALLEL_CACHE_BACKEND value too but isn't exercised here — it needs a
+  # pinned installer script, out of scope for this matrix. icecc has no
+  # Windows port (Icecream isn't packaged for Windows), so there is no
+  # windows-icecc entry.
+  # ---------------------------------------------------------------------------
+  cache-icecc:
+    name: cache-icecc (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-ccache
+            os: ubuntu-latest
+            backend: ccache
+            icecc: false
+          - name: linux-sccache
+            os: ubuntu-latest
+            backend: sccache
+            icecc: false
+          - name: linux-icecc
+            os: ubuntu-latest
+            backend: none
+            icecc: true
+          - name: macos-ccache
+            os: macos-latest
+            backend: ccache
+            icecc: false
+          - name: macos-sccache
+            os: macos-latest
+            backend: sccache
+            icecc: false
+          - name: macos-icecc
+            os: macos-latest
+            backend: none
+            icecc: true
+          - name: windows-ccache
+            os: windows-latest
+            backend: ccache
+            icecc: false
+          - name: windows-sccache
+            os: windows-latest
+            backend: sccache
+            icecc: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+        with:
+          arch: x64
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Install ccache/icecc (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ccache icecc
+
+      - name: Install ccache/icecream (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ccache icecream
+
+      - name: Install ccache (Windows)
+        if: runner.os == 'Windows'
+        run: choco install -y ccache
+
+      - uses: mozilla-actions/sccache-action@v0.0.9
+        if: matrix.backend == 'sccache'
+        with:
+          version: v0.12.0
+          disable_annotations: 'true'
+
+      - name: Select compiler (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          echo "CC=gcc" >> "$GITHUB_ENV"
+          echo "CXX=g++" >> "$GITHUB_ENV"
+
+      - name: Select compiler (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          echo "CC=cl" >> "$GITHUB_ENV"
+          echo "CXX=cl" >> "$GITHUB_ENV"
+
+      - name: Configure
+        shell: bash
+        run: |
+          args=(-S . -B build -G Ninja
+                -DCMAKE_BUILD_TYPE=Release
+                -DPARALLEL_ENABLE_TESTING=ON
+                -DPARALLEL_ENABLE_BENCHMARK=OFF)
+          if [ "${{ matrix.icecc }}" = "true" ]; then
+            args+=(-DPARALLEL_ENABLE_ICECC=ON -DPARALLEL_ENABLE_CACHE=OFF)
+          else
+            args+=(-DPARALLEL_ENABLE_CACHE=ON -DPARALLEL_CACHE_BACKEND=${{ matrix.backend }})
+          fi
+          cmake "${args[@]}"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Test
+        working-directory: build
+        run: ctest --output-on-failure --build-config Release --timeout 300
+
+      - name: Stop sccache server
+        if: always() && matrix.backend == 'sccache'
+        shell: bash
+        run: sccache --stop-server || true
+
+  # ---------------------------------------------------------------------------
   # Bazel build + test (parity check against the CMake build).
   # ---------------------------------------------------------------------------
   bazel:
