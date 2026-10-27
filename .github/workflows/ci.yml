@@ -242,9 +242,8 @@ jobs:
   # cl.exe rather than this repo's usual -A x64 VS generator: CMake's
   # COMPILER_LAUNCHER property is only honored by the Makefile/Ninja
   # generators, so the VS generator would silently no-op the launcher and the
-  # job would pass without testing anything. buildcache is a valid
-  # PARALLEL_CACHE_BACKEND value too but isn't exercised here — it needs a
-  # pinned installer script, out of scope for this matrix. icecc has no
+  # job would pass without testing anything. BuildCache runs in buildcache.yml.
+  # Icecc has no
   # Windows port (Icecream isn't packaged for Windows), so there is no
   # windows-icecc entry.
   # ---------------------------------------------------------------------------
