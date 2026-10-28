@@ -342,6 +342,10 @@ jobs:
             args+=(-DPARALLEL_ENABLE_ICECC=ON -DPARALLEL_ENABLE_CACHE=OFF)
           else
             args+=(-DPARALLEL_ENABLE_CACHE=ON -DPARALLEL_CACHE_BACKEND=${{ matrix.backend }})
+            # Release defaults to LTO, which Cmake/lto.cmake rejects with sccache.
+            if [ "${{ matrix.backend }}" = "sccache" ]; then
+              args+=(-DPARALLEL_LTO_MODE=off)
+            fi
           fi
           cmake "${args[@]}"
 
