@@ -242,10 +242,8 @@ jobs:
   # cl.exe rather than this repo's usual --architecture x64 VS generator: CMake's
   # COMPILER_LAUNCHER property is only honored by the Makefile/Ninja
   # generators, so the VS generator would silently no-op the launcher and the
-  # job would pass without testing anything. BuildCache runs in buildcache.yml.
-  # Icecc has no
-  # Windows port (Icecream isn't packaged for Windows), so there is no
-  # windows-icecc entry.
+  # job would pass without testing anything. Icecc has no Windows port
+  # (Icecream isn't packaged for Windows), so there is no windows-icecc entry.
   # ---------------------------------------------------------------------------
   cache-icecc:
     name: cache-icecc (${{ matrix.name }})
@@ -286,6 +284,18 @@ jobs:
             os: windows-latest
             backend: sccache
             icecc: false
+          - name: linux-buildcache
+            os: ubuntu-latest
+            backend: buildcache
+            icecc: false
+          - name: macos-buildcache
+            os: macos-latest
+            backend: buildcache
+            icecc: false
+          - name: windows-buildcache
+            os: windows-latest
+            backend: buildcache
+            icecc: false
 
     steps:
       - name: Checkout
@@ -318,6 +328,16 @@ jobs:
         with:
           version: v0.12.0
           disable_annotations: 'true'
+
+      - name: Set BuildCache directory
+        if: matrix.backend == 'buildcache'
+        shell: bash
+        run: echo "BUILDCACHE_DIR=$RUNNER_TEMP/buildcache-data" >> "$GITHUB_ENV"
+
+      - name: Install BuildCache
+        if: matrix.backend == 'buildcache'
+        shell: bash
+        run: python3 .github/scripts/install_buildcache.py --install-prefix "$RUNNER_TEMP/buildcache-tool"
 
       - name: Select compiler (Linux)
         if: runner.os == 'Linux'
