@@ -41,17 +41,17 @@ jobs:
           CC: clang
           CXX: clang++
         run: >
-          cmake -S . -B build -G Ninja
-          -DCMAKE_BUILD_TYPE=Debug
-          -DPARALLEL_ENABLE_TESTING=ON
-          -DPARALLEL_ENABLE_BENCHMARK=OFF
-          -DPARALLEL_ENABLE_SANITIZER=ON
-          -DPARALLEL_SANITIZER_TYPE=${{ matrix.sanitizer }}
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --source-dir . --build-dir build --generator Ninja
+          --build-type=Debug
+          --testing=ON
+          --benchmark=OFF
+          --sanitizer=ON
+          --sanitizer-types=${{ matrix.sanitizer }}
 
       - name: Build
-        run: cmake --build build --parallel
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build --parallel=4
 
       - name: Test
         working-directory: build
         timeout-minutes: 10
-        run: ctest --output-on-failure --timeout 300
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir . --test-timeout 300

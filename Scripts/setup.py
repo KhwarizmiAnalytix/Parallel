@@ -19,7 +19,6 @@ import importlib.util
 import os
 import platform
 import re
-import shutil
 import subprocess
 import sys
 import time
@@ -35,15 +34,23 @@ try:
 except ImportError:  # Windows CLI smoke and some CI jobs skip pip install
 
     class Fore:  # pylint: disable=too-few-public-methods
-        CYAN = GREEN = YELLOW = RED = WHITE = ""
+        BLUE = CYAN = GREEN = YELLOW = RED = WHITE = ""
 
     class Style:  # pylint: disable=too-few-public-methods
         RESET_ALL = ""
 
+
 from helpers import (
     build as build_helper,
+)
+from helpers import cli as cli_helper
+from helpers import (
     config as config_helper,
+)
+from helpers import (
     cppcheck as cppcheck_helper,
+)
+from helpers import (
     test as test_helper,
 )
 
@@ -127,12 +134,20 @@ class SummaryReporter:
                 "log_file": log_file,
             }
         except Exception as e:
-            self.reports["cppcheck"] = {"status": "error", "message": f"Failed to parse cppcheck results: {e}"}
+            self.reports["cppcheck"] = {
+                "status": "error",
+                "message": f"Failed to parse cppcheck results: {e}",
+            }
 
     def add_valgrind_report(self, build_path: str, exit_code: int):
-        valgrind_logs = glob.glob(os.path.join(build_path, "Testing", "Temporary", "MemoryChecker.*.log"))
+        valgrind_logs = glob.glob(
+            os.path.join(build_path, "Testing", "Temporary", "MemoryChecker.*.log")
+        )
         if not valgrind_logs:
-            self.reports["valgrind"] = {"status": "not_run", "message": "Valgrind was not executed or no logs found"}
+            self.reports["valgrind"] = {
+                "status": "not_run",
+                "message": "Valgrind was not executed or no logs found",
+            }
             return
         try:
             memory_leaks = 0
@@ -140,8 +155,14 @@ class SummaryReporter:
             for log_file in valgrind_logs:
                 with open(log_file, encoding="utf-8") as f:
                     content = f.read()
-                memory_leaks += sum(int(m) for m in re.findall(r"definitely lost: (\d+)", content) if int(m) > 0)
-                memory_errors += sum(int(m) for m in re.findall(r"ERROR SUMMARY: (\d+) errors", content) if int(m) > 0)
+                memory_leaks += sum(
+                    int(m) for m in re.findall(r"definitely lost: (\d+)", content) if int(m) > 0
+                )
+                memory_errors += sum(
+                    int(m)
+                    for m in re.findall(r"ERROR SUMMARY: (\d+) errors", content)
+                    if int(m) > 0
+                )
             self.reports["valgrind"] = {
                 "status": "completed",
                 "exit_code": exit_code,
@@ -150,7 +171,10 @@ class SummaryReporter:
                 "log_files": valgrind_logs,
             }
         except Exception as e:
-            self.reports["valgrind"] = {"status": "error", "message": f"Failed to parse valgrind results: {e}"}
+            self.reports["valgrind"] = {
+                "status": "error",
+                "message": f"Failed to parse valgrind results: {e}",
+            }
 
     def add_coverage_report(self, build_path: str, exit_code: int):
         """Parse the coverage-tool JSON report and extract summary metrics."""
@@ -202,9 +226,15 @@ class SummaryReporter:
                     "report_file": coverage_json,
                 }
             else:
-                self.reports["coverage"] = {"status": "error", "message": "Coverage JSON format not recognized"}
+                self.reports["coverage"] = {
+                    "status": "error",
+                    "message": "Coverage JSON format not recognized",
+                }
         except Exception as e:
-            self.reports["coverage"] = {"status": "error", "message": f"Failed to parse coverage results: {e}"}
+            self.reports["coverage"] = {
+                "status": "error",
+                "message": f"Failed to parse coverage results: {e}",
+            }
 
     def display_summary(self):
         if not self.reports:
@@ -258,12 +288,21 @@ class SummaryReporter:
             print_status(f"Covered Lines:  {covered_lines}", "INFO")
             print_status(
                 f"Coverage:       {coverage_percent:.2f}%",
-                "SUCCESS" if coverage_percent >= 95.0 else "WARNING" if coverage_percent >= 80.0 else "ERROR",
+                "SUCCESS"
+                if coverage_percent >= 95.0
+                else "WARNING"
+                if coverage_percent >= 80.0
+                else "ERROR",
             )
             if report.get("total_functions", 0) > 0:
-                print_status(f"Function Coverage: {report.get('function_coverage_percent', 0.0):.2f}%", "INFO")
+                print_status(
+                    f"Function Coverage: {report.get('function_coverage_percent', 0.0):.2f}%",
+                    "INFO",
+                )
             if report.get("total_regions", 0) > 0:
-                print_status(f"Region Coverage:   {report.get('region_coverage_percent', 0.0):.2f}%", "INFO")
+                print_status(
+                    f"Region Coverage:   {report.get('region_coverage_percent', 0.0):.2f}%", "INFO"
+                )
             report_file = report.get("report_file", "")
             if report_file:
                 report_dir = os.path.dirname(report_file)
@@ -318,13 +357,20 @@ def check_xcode_availability() -> bool:
     if platform.system() != "Darwin":
         return False
     try:
-        result = subprocess.run(["xcodebuild", "-version"], capture_output=True, check=True, text=True)
+        result = subprocess.run(
+            ["xcodebuild", "-version"], capture_output=True, check=True, text=True
+        )
         print_status(f"Found Xcode: {result.stdout.strip().split()[1]}", "INFO")
         return True
     except subprocess.CalledProcessError as e:
-        stderr_output = e.stderr if isinstance(e.stderr, str) else (e.stderr.decode() if e.stderr else "")
+        stderr_output = (
+            e.stderr if isinstance(e.stderr, str) else (e.stderr.decode() if e.stderr else "")
+        )
         if "command line tools instance" in stderr_output:
-            print_status("Xcode Command Line Tools found, but full Xcode is required for Xcode generator", "WARNING")
+            print_status(
+                "Xcode Command Line Tools found, but full Xcode is required for Xcode generator",
+                "WARNING",
+            )
         else:
             print_status(f"Xcode check failed: {stderr_output.strip()}", "WARNING")
         return False
@@ -334,7 +380,12 @@ def check_xcode_availability() -> bool:
 
 
 def print_status(message: str, status: str = "INFO", end: str = "\n") -> None:
-    status_colors = {"INFO": Fore.BLUE, "SUCCESS": Fore.GREEN, "ERROR": Fore.RED, "WARNING": Fore.YELLOW}
+    status_colors = {
+        "INFO": Fore.BLUE,
+        "SUCCESS": Fore.GREEN,
+        "ERROR": Fore.RED,
+        "WARNING": Fore.YELLOW,
+    }
     color = status_colors.get(status, Fore.WHITE)
     print(f"{color}[{status}]{Style.RESET_ALL} {message}", end=end)
 
@@ -357,6 +408,14 @@ class ParallelFlags:
     ON = "ON"
 
     def __init__(self, arg_list):
+        self.requested_build_type = next(
+            (
+                cli_helper.canonical_build_type(arg)
+                for arg in reversed(arg_list)
+                if arg in ("debug", "release", "relwithdebinfo", "minsizerel")
+            ),
+            None,
+        )
         self.__initialize_flags()
         if arg_list:
             self.__build_cmake_flag()
@@ -476,7 +535,15 @@ class ParallelFlags:
                 self.builder_suffix += "_static"
             elif arg in sanitizer_list:
                 self.__value["sanitizer"] = self.ON
-                self.__value["sanitizer_enum"] = arg
+                selected = (
+                    self.__value["sanitizer_enum"].split(",")
+                    if getattr(self, "_sanitizer_selected", False)
+                    else []
+                )
+                if arg not in selected:
+                    selected.append(arg)
+                self.__value["sanitizer_enum"] = ",".join(selected)
+                self._sanitizer_selected = True
                 self.builder_suffix += f"_{arg}"
             elif arg.startswith("lto."):
                 lto_modes = ["off", "thin", "full", "ipo", "auto"]
@@ -487,7 +554,10 @@ class ParallelFlags:
                         self.builder_suffix += f"_lto_{lto_mode}"
                     print_status(f"LTO mode: {lto_mode}", "INFO")
                 else:
-                    print_status(f"Unknown LTO mode '{lto_mode}'. Valid options: {', '.join(lto_modes)}", "ERROR")
+                    print_status(
+                        f"Unknown LTO mode '{lto_mode}'. Valid options: {', '.join(lto_modes)}",
+                        "ERROR",
+                    )
                     sys.exit(1)
             elif arg.startswith("linker."):
                 linker_value = arg.split(".", 1)[1].lower()
@@ -542,10 +612,15 @@ class ParallelFlags:
 
     def __validate_flags(self):
         if self.__value.get("sanitizer") == self.ON and self.__value.get("valgrind") == self.ON:
-            print_status("Both sanitizer and valgrind enabled - consider using only one.", "WARNING")
+            print_status(
+                "Both sanitizer and valgrind enabled - consider using only one.", "WARNING"
+            )
 
         if self.__value.get("coverage") == self.ON and self.__value.get("test") != self.ON:
-            print_status("Coverage enabled but testing is disabled - enabling tests automatically.", "WARNING")
+            print_status(
+                "Coverage enabled but testing is disabled - enabling tests automatically.",
+                "WARNING",
+            )
             self.__value["test"] = self.ON
 
         if (
@@ -559,12 +634,21 @@ class ParallelFlags:
             sys.exit(1)
 
         if self.__value.get("spell") == self.ON:
-            print_status("SPELL CHECKING ENABLED: Automatic spelling corrections will be applied during build!", "WARNING")
-            print_status("Ensure you have committed your changes before building with this option.", "WARNING")
+            print_status(
+                "SPELL CHECKING ENABLED: Automatic spelling corrections will be applied during build!",
+                "WARNING",
+            )
+            print_status(
+                "Ensure you have committed your changes before building with this option.",
+                "WARNING",
+            )
 
         parallel_backend = self.__value.get("parallel_backend", "std")
         if parallel_backend not in ["std", "openmp", "tbb"]:
-            print_status(f"Invalid SMP backend '{parallel_backend}'. Valid options: std, openmp, tbb", "ERROR")
+            print_status(
+                f"Invalid SMP backend '{parallel_backend}'. Valid options: std, openmp, tbb",
+                "ERROR",
+            )
             sys.exit(1)
 
     @staticmethod
@@ -575,15 +659,17 @@ class ParallelFlags:
     def create_cmake_flags(self, cmake_cmd_flags, build_enum, system):
         debug_print("Create cmake flags")
         del system  # unused; kept for parity with the CMake-driven build-type selection below
-        if (
+        if not self.requested_build_type and (
             self.__value.get("valgrind") == self.ON
             or self.__value.get("sanitizer") == self.ON
             or self.__value.get("coverage") == self.ON
         ):
-            print_status("Enabling debug build for sanitizer, valgrind, or coverage analysis", "INFO")
-            build_type = "DEBUG"
+            print_status(
+                "Enabling debug build for sanitizer, valgrind, or coverage analysis", "INFO"
+            )
+            build_type = "Debug"
         else:
-            build_type = str(build_enum).capitalize()
+            build_type = cli_helper.canonical_build_type(build_enum)
 
         for key, value in self.__value.items():
             if key in self.__name:
@@ -618,6 +704,7 @@ class ParallelConfiguration:
     """Drives config/build/test/coverage for Parallel from parsed dotted-token args."""
 
     def __init__(self, args_list):
+        self.source_path = Path(__file__).resolve().parents[1]
         missing_deps = check_dependencies()
         if missing_deps:
             print_status("Missing required dependencies:", "ERROR")
@@ -626,12 +713,23 @@ class ParallelConfiguration:
             print_status("Please install missing dependencies and try again.", "ERROR")
             sys.exit(1)
 
-        self.error_logger = ErrorLogger()
+        self.error_logger = ErrorLogger(str(self.source_path / "logs"))
         self.summary_reporter = SummaryReporter()
 
         self.__initialize_values()
         self.__parallel_flags = ParallelFlags(args_list)
+        self.__set_ninja_flags()
         self.__fill_compilation_flags(args_list)
+        self.__value["build_enum"] = self.__parallel_flags.create_cmake_flags(
+            [], self.__value["build_enum"], self.__value["system"]
+        )
+        if self.__compiler_user_specified:
+            compiler = self.__value["cmake_cxx_compiler"].split("=", 1)[-1]
+            self.__value["build_folder"] += "_" + re.sub(
+                r"[^a-zA-Z0-9+-]", "_", Path(compiler).name
+            )
+        if self.__value["build_enum"] != "Release":
+            self.__value["build_folder"] += "_" + self.__value["build_enum"].lower()
 
     def __initialize_values(self):
         default_cxx_compiler = "clang++"
@@ -665,8 +763,8 @@ class ParallelConfiguration:
         elif self.__is_clang_compiler(arg):
             self.__set_clang_compiler(arg)
         elif arg == "clang-cl":
-            self.__value["cmake_cxx_compiler"] = "-DCMAKE_GENERATOR_TOOLSET=ClangCL"
-            self.__value["cmake_c_compiler"] = ""
+            self.__value["cmake_cxx_compiler"] = "-DCMAKE_CXX_COMPILER=clang-cl"
+            self.__value["cmake_c_compiler"] = "-DCMAKE_C_COMPILER=clang-cl"
             self.__compiler_user_specified = True
         elif self.__is_gcc_compiler(arg):
             self.__set_gcc_compiler(arg)
@@ -674,8 +772,8 @@ class ParallelConfiguration:
             self.__set_visual_studio(arg)
         elif arg in ["config", "build", "test"]:
             self.__value[arg] = arg
-        elif arg in ["release", "debug", "relwithdebinfo"]:
-            self.__value["build_enum"] = arg.capitalize()
+        elif arg in ["release", "debug", "relwithdebinfo", "minsizerel"]:
+            self.__value["build_enum"] = cli_helper.canonical_build_type(arg)
         elif arg in ["vv", "v"]:
             self.__set_verbose_flags()
 
@@ -702,7 +800,9 @@ class ParallelConfiguration:
 
     def __set_clang_compiler(self, arg):
         self.__value["cmake_c_compiler"] = f"-DCMAKE_C_COMPILER={arg}"
-        self.__value["cmake_cxx_compiler"] = f"-DCMAKE_CXX_COMPILER={arg.replace('clang', 'clang++')}"
+        self.__value["cmake_cxx_compiler"] = (
+            f"-DCMAKE_CXX_COMPILER={arg.replace('clang', 'clang++')}"
+        )
         self.__compiler_user_specified = True
 
     def __is_gcc_compiler(self, arg):
@@ -778,7 +878,10 @@ class ParallelConfiguration:
         print_status("Building project...", "INFO")
         try:
             exit_code = build_helper.build_project(
-                self.__value["builder"], self.__value["build_enum"], self.__value["system"], self.__shell_flag()
+                self.__value["builder"],
+                self.__value["build_enum"],
+                self.__value["system"],
+                self.__shell_flag(),
             )
             if exit_code == 0:
                 print_status("Build completed successfully", "SUCCESS")
@@ -795,7 +898,9 @@ class ParallelConfiguration:
             return 0
         print_status("Starting static code analysis with cppcheck...", "INFO")
         try:
-            version_result = subprocess.run(["cppcheck", "--version"], capture_output=True, check=True, text=True)
+            version_result = subprocess.run(
+                ["cppcheck", "--version"], capture_output=True, check=True, text=True
+            )
             print_status(f"Found cppcheck: {version_result.stdout.strip()}", "SUCCESS")
         except (subprocess.CalledProcessError, FileNotFoundError):
             print_status("cppcheck not found. Install it (e.g. 'brew install cppcheck').", "ERROR")
@@ -814,7 +919,9 @@ class ParallelConfiguration:
             self.summary_reporter.add_cppcheck_report(output_file, exit_code)
             return exit_code
         except Exception as e:
-            self.error_logger.log_error(" ".join(cppcheck_cmd), str(e), "Running cppcheck static analysis")
+            self.error_logger.log_error(
+                " ".join(cppcheck_cmd), str(e), "Running cppcheck static analysis"
+            )
             print_status(f"Unexpected error during cppcheck execution: {e}", "ERROR")
             return 1
 
@@ -842,7 +949,9 @@ class ParallelConfiguration:
         try:
             from coverage_tool import get_coverage
         except ImportError:
-            print_status("coverage-tool is not installed. Install with: pip install coverage-tool", "ERROR")
+            print_status(
+                "coverage-tool is not installed. Install with: pip install coverage-tool", "ERROR"
+            )
             return 1
 
         coverage_result = get_coverage(
@@ -861,17 +970,13 @@ class ParallelConfiguration:
         return 1
 
     def __shell_flag(self):
-        return self.__value["system"] == "Windows"
+        return False
 
     def move_to_build_folder(self):
-        os.chdir("..")
-        build_folder = self.__value["build_folder"]
-        if os.path.isdir(build_folder) and self.__value.get("config") == "config":
-            shutil.rmtree(build_folder, ignore_errors=True)
-        if not os.path.isdir(build_folder):
-            os.mkdir(build_folder)
+        build_folder = self.source_path / self.__value["build_folder"]
+        build_folder.mkdir(parents=True, exist_ok=True)
         os.chdir(build_folder)
-        return os.getcwd()
+        return str(build_folder)
 
 
 def parse_args(args):
@@ -884,7 +989,10 @@ def parse_args(args):
             if sanitizer_type in valid_sanitizers:
                 processed_args.extend(["sanitizer", sanitizer_type])
             else:
-                print_status(f"Invalid sanitizer type: {sanitizer_type}. Valid options: {', '.join(valid_sanitizers)}", "ERROR")
+                print_status(
+                    f"Invalid sanitizer type: {sanitizer_type}. Valid options: {', '.join(valid_sanitizers)}",
+                    "ERROR",
+                )
                 sys.exit(1)
         elif arg.startswith("--lto."):
             lto_mode = arg.split(".", 1)[1].lower()
@@ -892,7 +1000,10 @@ def parse_args(args):
             if lto_mode in valid_lto_modes:
                 processed_args.append(f"lto.{lto_mode}")
             else:
-                print_status(f"Invalid LTO mode '{lto_mode}'. Valid options: {', '.join(valid_lto_modes)}", "ERROR")
+                print_status(
+                    f"Invalid LTO mode '{lto_mode}'. Valid options: {', '.join(valid_lto_modes)}",
+                    "ERROR",
+                )
                 sys.exit(1)
         elif arg.startswith("--parallel."):
             backend_value = arg.split(".", 1)[1].lower()
@@ -900,7 +1011,10 @@ def parse_args(args):
             if backend_value in valid_backends:
                 processed_args.append(f"parallel.{backend_value}")
             else:
-                print_status(f"Invalid SMP backend: {backend_value}. Valid options: {', '.join(valid_backends)}", "ERROR")
+                print_status(
+                    f"Invalid SMP backend: {backend_value}. Valid options: {', '.join(valid_backends)}",
+                    "ERROR",
+                )
                 sys.exit(1)
         elif arg.startswith("--linker."):
             processed_args.append(f"linker.{arg.split('.', 1)[1].lower()}")
@@ -915,7 +1029,14 @@ def parse_args(args):
 
 def main():
     """Parse CLI args and drive config/build/test/coverage, or print --help."""
+    forwarded = cli_helper.dispatch(
+        sys.argv[1:], Path(__file__).resolve().parents[1], ParallelFlags, ParallelConfiguration, parse_args
+    )
+    if forwarded is not None:
+        sys.exit(forwarded)
+
     if len(sys.argv) == 2 and sys.argv[1] == "--help":
+        cli_helper.print_help()
         print_status("Parallel Build Configuration Helper", "INFO")
         print("\n" + "=" * 80)
         print("DEFAULT CONFIGURATION:")
@@ -948,13 +1069,15 @@ def main():
     try:
         arg_list = parse_args(sys.argv[1:])
         if not arg_list:
-            print_status("No build configuration specified. Use --help for usage information.", "ERROR")
+            print_status(
+                "No build configuration specified. Use --help for usage information.", "ERROR"
+            )
             sys.exit(1)
 
         print_status(f"Starting build configuration for {platform.system()}", "INFO")
         compilation_calc = ParallelConfiguration(arg_list)
 
-        source_path = os.path.dirname(os.getcwd())
+        source_path = str(compilation_calc.source_path)
         build_path = compilation_calc.move_to_build_folder()
         print_status(f"Build directory: {build_path}", "INFO")
 
@@ -966,13 +1089,19 @@ def main():
             compilation_calc.build()
             build_end = time.perf_counter()
 
-            compilation_calc.cppcheck(source_path, build_path)
+            phase_result = compilation_calc.cppcheck(source_path, build_path)
+            if phase_result:
+                sys.exit(phase_result)
             cppcheck_end = time.perf_counter()
 
-            compilation_calc.test(source_path, build_path)
+            phase_result = compilation_calc.test(source_path, build_path)
+            if phase_result:
+                sys.exit(phase_result)
             test_end = time.perf_counter()
 
-            compilation_calc.coverage(source_path, build_path)
+            phase_result = compilation_calc.coverage(source_path, build_path)
+            if phase_result:
+                sys.exit(phase_result)
             end = time.perf_counter()
 
             print_status(f"Config time: {config_end - start:.4f} seconds", "INFO")
@@ -985,7 +1114,10 @@ def main():
 
             compilation_calc.summary_reporter.display_summary()
             if compilation_calc.error_logger.has_errors():
-                print_status(f"Error log available at: {compilation_calc.error_logger.get_log_file_path()}", "INFO")
+                print_status(
+                    f"Error log available at: {compilation_calc.error_logger.get_log_file_path()}",
+                    "INFO",
+                )
 
         except SystemExit:
             compilation_calc.summary_reporter.display_summary()

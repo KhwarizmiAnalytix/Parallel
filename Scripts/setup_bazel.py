@@ -46,7 +46,12 @@ except ImportError:  # Bazel CI jobs may not pip-install colorama
 
 
 def print_status(message: str, status: str = "INFO") -> None:
-    colors = {"INFO": COLOR_CYAN, "SUCCESS": COLOR_GREEN, "WARNING": COLOR_YELLOW, "ERROR": COLOR_RED}
+    colors = {
+        "INFO": COLOR_CYAN,
+        "SUCCESS": COLOR_GREEN,
+        "WARNING": COLOR_YELLOW,
+        "ERROR": COLOR_RED,
+    }
     print(f"{colors.get(status, COLOR_WHITE)}[{status}]{COLOR_RESET} {message}")
 
 
@@ -97,7 +102,11 @@ def _merge_dotted_segments(parts: list[str]) -> list[str]:
         elif pl[i] == "sanitizer" and i + 1 < len(pl) and pl[i + 1] in _SANITIZER_NAMES:
             out.append(f"sanitizer.{pl[i + 1]}")
             i += 2
-        elif pl[i] == "lto" and i + 1 < len(pl) and pl[i + 1] in ("off", "thin", "full", "ipo", "auto"):
+        elif (
+            pl[i] == "lto"
+            and i + 1 < len(pl)
+            and pl[i + 1] in ("off", "thin", "full", "ipo", "auto")
+        ):
             out.append(f"lto.{pl[i + 1]}")
             i += 2
         elif pl[i] == "linker" and i + 1 < len(pl):
@@ -173,7 +182,12 @@ class ParallelBazelConfiguration:
         for arg in self.args:
             arg_lower = arg.lower()
 
-            if arg_lower in ("clang", "gcc") or "clang" in arg_lower or "gcc" in arg_lower or "g++" in arg_lower:
+            if (
+                arg_lower in ("clang", "gcc")
+                or "clang" in arg_lower
+                or "gcc" in arg_lower
+                or "g++" in arg_lower
+            ):
                 if arg_lower not in ("clangtidy", "clang-tidy", "clang_tidy", "cppcheck"):
                     self._set_compiler(arg_lower)
                     continue
@@ -187,7 +201,9 @@ class ParallelBazelConfiguration:
                 if backend in ("std", "openmp", "tbb"):
                     self.parallel_backend = backend
                 else:
-                    print_status(f"Invalid parallel backend '{backend}'. Use std, openmp, or tbb.", "ERROR")
+                    print_status(
+                        f"Invalid parallel backend '{backend}'. Use std, openmp, or tbb.", "ERROR"
+                    )
                     sys.exit(1)
             elif arg_lower in ("shared", "static"):
                 # CMake's BUILD_SHARED_LIBS defaults ON for this repo; Bazel's own
@@ -311,7 +327,10 @@ class ParallelBazelConfiguration:
         for proc_name in ["bazel-real.exe", "bazel.exe"]:
             try:
                 result = subprocess.run(
-                    ["taskkill", "/F", "/IM", proc_name], capture_output=True, timeout=10, check=False
+                    ["taskkill", "/F", "/IM", proc_name],
+                    capture_output=True,
+                    timeout=10,
+                    check=False,
                 )
                 if result.returncode == 0:
                     print_status(f"Killed stale process: {proc_name}", "WARNING")
@@ -321,9 +340,17 @@ class ParallelBazelConfiguration:
     def _shutdown_bazel_for_batch(self) -> None:
         if not self.use_batch:
             return
-        print_status("Running `bazel shutdown` before `--batch` (avoids startup-option mismatch).", "INFO")
+        print_status(
+            "Running `bazel shutdown` before `--batch` (avoids startup-option mismatch).", "INFO"
+        )
         try:
-            subprocess.run(bazel_prefix() + ["shutdown"], capture_output=True, text=True, timeout=120, check=False)
+            subprocess.run(
+                bazel_prefix() + ["shutdown"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
         except (subprocess.TimeoutExpired, FileNotFoundError):
             pass
 
@@ -346,7 +373,10 @@ class ParallelBazelConfiguration:
         self._pf("Platform", self.system)
         self._pf("Compiler", (self.compiler or "clang").upper())
         self._pf("Build type", self.build_type.upper())
-        self._pf("Cxx standard", self.cxx_standard.replace("cxx", "C++") if self.cxx_standard else "C++20 (default)")
+        self._pf(
+            "Cxx standard",
+            self.cxx_standard.replace("cxx", "C++") if self.cxx_standard else "C++20 (default)",
+        )
 
         print(f"\n{COLOR_CYAN}Parallel module (Bazel flags):{COLOR_RESET}")
         self._pf("Backend", (self.parallel_backend or "std").upper())
@@ -410,7 +440,9 @@ class ParallelBazelConfiguration:
             self.timing_data["build"] = elapsed
             print_status(f"Build completed successfully ({elapsed:.2f}s)", "SUCCESS")
             if elapsed > self.slow_phase_warn_seconds:
-                print_status(f"Build took longer than {self.slow_phase_warn_seconds:.0f}s.", "WARNING")
+                print_status(
+                    f"Build took longer than {self.slow_phase_warn_seconds:.0f}s.", "WARNING"
+                )
         except subprocess.CalledProcessError as e:
             print_status(f"Build failed with exit code {e.returncode}", "ERROR")
             sys.exit(1)
@@ -436,7 +468,8 @@ class ParallelBazelConfiguration:
             if result.returncode == 0:
                 print_status(f"Tests completed successfully ({elapsed:.2f}s)", "SUCCESS")
             elif result.returncode == 4:
-                print_status(f"No test targets found ({elapsed:.2f}s)", "WARNING")
+                print_status("No test targets found", "ERROR")
+                sys.exit(4)
             else:
                 print_status(f"Tests failed with exit code {result.returncode}", "ERROR")
                 sys.exit(1)
@@ -465,7 +498,8 @@ class ParallelBazelConfiguration:
                 print_status(f"Coverage report (LCOV): {dat_path}", "INFO")
                 self._generate_coverage_html(dat_path)
             elif result.returncode == 4:
-                print_status(f"No coverage targets found ({elapsed:.2f}s)", "WARNING")
+                print_status("No test targets found", "ERROR")
+                sys.exit(4)
             else:
                 print_status(f"Coverage failed with exit code {result.returncode}", "ERROR")
                 sys.exit(1)
@@ -619,7 +653,9 @@ class ParallelBazelConfiguration:
                 timeout=self.subprocess_timeout,
             )
             if merge_result.returncode != 0:
-                print_status(f"llvm-profdata merge failed: {merge_result.stderr.strip()}", "WARNING")
+                print_status(
+                    f"llvm-profdata merge failed: {merge_result.stderr.strip()}", "WARNING"
+                )
                 return None
 
             export_cmd = [
@@ -649,7 +685,10 @@ class ParallelBazelConfiguration:
             lcov_text = export_result.stdout
             if workspace_root:
                 lcov_text = re.sub(
-                    r"^SF:.*?/execroot/_main/", f"SF:{workspace_root}/", lcov_text, flags=re.MULTILINE
+                    r"^SF:.*?/execroot/_main/",
+                    f"SF:{workspace_root}/",
+                    lcov_text,
+                    flags=re.MULTILINE,
                 )
             with open(dat_path, "w", encoding="utf-8") as f:
                 f.write(lcov_text)
@@ -662,7 +701,9 @@ class ParallelBazelConfiguration:
     def _generate_coverage_html(self, dat_path: str) -> None:
         """Convert the Bazel LCOV coverage report into an HTML report via genhtml."""
         if not os.path.isfile(dat_path):
-            print_status(f"Coverage LCOV file not found at {dat_path}; skipping HTML report", "WARNING")
+            print_status(
+                f"Coverage LCOV file not found at {dat_path}; skipping HTML report", "WARNING"
+            )
             return
         genhtml = shutil.which("genhtml")
         if genhtml is None:
@@ -684,11 +725,16 @@ class ParallelBazelConfiguration:
             "inconsistent,corrupt,unsupported",
         ]
         try:
-            subprocess.run(cmd, check=True, timeout=self.subprocess_timeout, capture_output=True, text=True)
+            subprocess.run(
+                cmd, check=True, timeout=self.subprocess_timeout, capture_output=True, text=True
+            )
             index_html = os.path.abspath(os.path.join(html_dir, "index.html"))
             print_status(f"Coverage HTML report: {index_html}", "SUCCESS")
         except subprocess.CalledProcessError as e:
-            print_status(f"Failed to generate HTML coverage report: {(e.stderr or '').strip()[-500:]}", "WARNING")
+            print_status(
+                f"Failed to generate HTML coverage report: {(e.stderr or '').strip()[-500:]}",
+                "WARNING",
+            )
         except subprocess.TimeoutExpired as e:
             print_status(f"Failed to generate HTML coverage report: {e}", "WARNING")
 
@@ -817,6 +863,12 @@ def print_help() -> None:
 
 
 def main() -> None:
+    from helpers.cli import dispatch_bazel
+
+    forwarded = dispatch_bazel(sys.argv[1:])
+    if forwarded is not None:
+        sys.exit(forwarded)
+
     if len(sys.argv) == 2 and sys.argv[1] == "--help":
         print_help()
         return
@@ -830,7 +882,13 @@ def main() -> None:
         print_status(f"Starting Bazel build for {platform.system()}", "INFO")
         config = ParallelBazelConfiguration(arg_list)
 
-        if not (config.run_build or config.run_tests or config.run_clean or config.run_config or config.run_coverage):
+        if not (
+            config.run_build
+            or config.run_tests
+            or config.run_clean
+            or config.run_config
+            or config.run_coverage
+        ):
             config.run_build = True
 
         config.execute()

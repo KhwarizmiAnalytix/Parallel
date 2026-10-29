@@ -78,24 +78,24 @@ jobs:
       - name: Configure (Linux/macOS)
         if: runner.os != 'Windows'
         run: >
-          cmake -S . -B build -G Ninja
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -DPARALLEL_ENABLE_TESTING=ON
-          -DPARALLEL_ENABLE_BENCHMARK=ON
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --source-dir . --build-dir build --generator Ninja
+          --build-type=${{ matrix.build_type }}
+          --testing=ON
+          --benchmark=ON
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
         run: >
-          cmake -S . -B build -A x64
-          -DPARALLEL_ENABLE_TESTING=ON
-          -DPARALLEL_ENABLE_BENCHMARK=ON
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build --architecture x64
+          --testing=ON
+          --benchmark=ON
 
       - name: Build
-        run: cmake --build build --config ${{ matrix.build_type }} --parallel
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build --build-type ${{ matrix.build_type }} --parallel=4
 
       - name: Test
         working-directory: build
-        run: ctest --output-on-failure --build-config ${{ matrix.build_type }} --timeout 300
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir . --build-type ${{ matrix.build_type }} --test-timeout 300
 
   # ---------------------------------------------------------------------------
   # Non-default SMP backends (std is covered by the matrix above), across every
@@ -181,7 +181,7 @@ jobs:
         if: matrix.backend == 'openmp' && runner.os == 'macOS'
         run: |
           brew install libomp
-          echo "LIBOMP_PREFIX=$(brew --prefix libomp)" >> "$GITHUB_ENV"
+          echo "LIBOMP_PREFIX=$(brew --install-prefix libomp)" >> "$GITHUB_ENV"
 
       # Windows TBB needs no explicit install step: tbb_multithreading.cmake
       # falls back to fetching and building oneTBB from source, which works
@@ -194,28 +194,28 @@ jobs:
       - name: Configure (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
-          args=(-S . -B build -G Ninja
-                -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-                -DPARALLEL_BACKEND=${{ matrix.backend }}
-                -DPARALLEL_ENABLE_TESTING=ON
-                -DPARALLEL_ENABLE_BENCHMARK=OFF)
+          args=(-S . --build-dir build --generator Ninja
+                --build-type=${{ matrix.build_type }}
+                --backend=${{ matrix.backend }}
+                --testing=ON
+                --benchmark=OFF)
           if [ "${{ matrix.backend }}" = "openmp" ] && [ "${{ runner.os }}" = "macOS" ]; then
             # AppleClang has no native OpenMP; point FindOpenMP at Homebrew's
             # libomp explicitly (the standard workaround — FindOpenMP can't
             # locate it on its own).
-            args+=(-DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp -I${LIBOMP_PREFIX}/include")
-            args+=(-DOpenMP_CXX_LIB_NAMES=omp)
-            args+=(-DOpenMP_omp_LIBRARY="${LIBOMP_PREFIX}/lib/libomp.dylib")
+            args+=(--openmp-flags="-Xpreprocessor -fopenmp -I${LIBOMP_PREFIX}/include")
+            args+=(--openmp-libraries=omp)
+            args+=(--openmp-library="${LIBOMP_PREFIX}/lib/libomp.dylib")
           fi
           cmake "${args[@]}"
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
         run: >
-          cmake -S . -B build -A x64
-          -DPARALLEL_BACKEND=${{ matrix.backend }}
-          -DPARALLEL_ENABLE_TESTING=ON
-          -DPARALLEL_ENABLE_BENCHMARK=OFF
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build --architecture x64
+          --backend=${{ matrix.backend }}
+          --testing=ON
+          --benchmark=OFF
 
       - name: Verify backend was actually selected
         shell: bash
@@ -227,11 +227,11 @@ jobs:
           fi
 
       - name: Build
-        run: cmake --build build --config ${{ matrix.build_type }} --parallel
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build --build-type ${{ matrix.build_type }} --parallel=4
 
       - name: Test
         working-directory: build
-        run: ctest --output-on-failure --build-config ${{ matrix.build_type }} --timeout 300
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir . --build-type ${{ matrix.build_type }} --test-timeout 300
 
   # ---------------------------------------------------------------------------
   # Compiler-cache and Icecream (icecc) coverage across platforms. Exercises
@@ -239,7 +239,7 @@ jobs:
   # PARALLEL_ENABLE_ICECC so broken cache/icecc wiring (Cmake/cache.cmake,
   # Cmake/helper_macros.cmake) fails CI instead of only showing up on a
   # developer's machine. Windows entries use Ninja + a vcvars-initialized
-  # cl.exe rather than this repo's usual -A x64 VS generator: CMake's
+  # cl.exe rather than this repo's usual --architecture x64 VS generator: CMake's
   # COMPILER_LAUNCHER property is only honored by the Makefile/Ninja
   # generators, so the VS generator would silently no-op the launcher and the
   # job would pass without testing anything. BuildCache runs in buildcache.yml.
@@ -334,27 +334,27 @@ jobs:
       - name: Configure
         shell: bash
         run: |
-          args=(-S . -B build -G Ninja
-                -DCMAKE_BUILD_TYPE=Release
-                -DPARALLEL_ENABLE_TESTING=ON
-                -DPARALLEL_ENABLE_BENCHMARK=OFF)
+          args=(-S . --build-dir build --generator Ninja
+                --build-type=Release
+                --testing=ON
+                --benchmark=OFF)
           if [ "${{ matrix.icecc }}" = "true" ]; then
-            args+=(-DPARALLEL_ENABLE_ICECC=ON -DPARALLEL_ENABLE_CACHE=OFF)
+            args+=(--icecc=ON --cache=OFF)
           else
-            args+=(-DPARALLEL_ENABLE_CACHE=ON -DPARALLEL_CACHE_BACKEND=${{ matrix.backend }})
+            args+=(--cache=ON --cache-backend=${{ matrix.backend }})
             # Release defaults to LTO, which Cmake/lto.cmake rejects with sccache.
             if [ "${{ matrix.backend }}" = "sccache" ]; then
-              args+=(-DPARALLEL_LTO_MODE=off)
+              args+=(--lto-mode=off)
             fi
           fi
           cmake "${args[@]}"
 
       - name: Build
-        run: cmake --build build --config Release --parallel
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build --build-type Release --parallel=4
 
       - name: Test
         working-directory: build
-        run: ctest --output-on-failure --build-config Release --timeout 300
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir . --build-type Release --test-timeout 300
 
       - name: Stop sccache server
         if: always() && matrix.backend == 'sccache'
@@ -388,7 +388,7 @@ jobs:
         # Scoped to our own packages: "//..." would also descend into the vendored
         # ThirdParty/benchmark/tools package, which needs rules_python (not a
         # dependency of this repo's Bazel build).
-        run: bazel build -- //:Parallel //Testing/...
+        run: python3 "${{ github.workspace }}/Scripts/setup_bazel.py" build --compiler=default --compilation-mode=fastbuild --target=//:Parallel --target=//Testing/...
 
       - name: Test
-        run: bazel test --test_output=errors -- //Testing/...
+        run: python3 "${{ github.workspace }}/Scripts/setup_bazel.py" test --compiler=default --compilation-mode=fastbuild --test-output=errors --target=//Testing/...
