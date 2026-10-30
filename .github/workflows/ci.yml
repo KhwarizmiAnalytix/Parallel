@@ -181,7 +181,7 @@ jobs:
         if: matrix.backend == 'openmp' && runner.os == 'macOS'
         run: |
           brew install libomp
-          echo "LIBOMP_PREFIX=$(brew --install-prefix libomp)" >> "$GITHUB_ENV"
+          echo "LIBOMP_PREFIX=$(brew --prefix libomp)" >> "$GITHUB_ENV"
 
       # Windows TBB needs no explicit install step: tbb_multithreading.cmake
       # falls back to fetching and building oneTBB from source, which works
@@ -194,7 +194,7 @@ jobs:
       - name: Configure (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
-          args=(-S . --build-dir build --generator Ninja
+          args=(--compiler=default --source-dir . --build-dir build --generator Ninja
                 --build-type=${{ matrix.build_type }}
                 --backend=${{ matrix.backend }}
                 --testing=ON
@@ -207,7 +207,7 @@ jobs:
             args+=(--openmp-libraries=omp)
             args+=(--openmp-library="${LIBOMP_PREFIX}/lib/libomp.dylib")
           fi
-          cmake "${args[@]}"
+          python3 "${{ github.workspace }}/Scripts/setup.py" config "${args[@]}"
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
@@ -337,7 +337,7 @@ jobs:
       - name: Install BuildCache
         if: matrix.backend == 'buildcache'
         shell: bash
-        run: python3 .github/scripts/install_buildcache.py --install-prefix "$RUNNER_TEMP/buildcache-tool"
+        run: python3 .github/scripts/install_buildcache.py --prefix "$RUNNER_TEMP/buildcache-tool"
 
       - name: Select compiler (Linux)
         if: runner.os == 'Linux'
@@ -354,7 +354,7 @@ jobs:
       - name: Configure
         shell: bash
         run: |
-          args=(-S . --build-dir build --generator Ninja
+          args=(--compiler=default --source-dir . --build-dir build --generator Ninja
                 --build-type=Release
                 --testing=ON
                 --benchmark=OFF)
@@ -367,7 +367,7 @@ jobs:
               args+=(--lto-mode=off)
             fi
           fi
-          cmake "${args[@]}"
+          python3 "${{ github.workspace }}/Scripts/setup.py" config "${args[@]}"
 
       - name: Build
         run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build --build-type Release --parallel=4

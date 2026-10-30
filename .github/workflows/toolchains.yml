@@ -71,7 +71,7 @@ jobs:
       - name: Build
         run: python Scripts/setup.py build --build-dir build-toolchain --build-type ${{ matrix.build_type }} --parallel 4
       - name: Test
-        run: python Scripts/setup.py test --build-dir . --build-dir build-toolchain --build-type ${{ matrix.build_type }} --test-timeout 300
+        run: python Scripts/setup.py test --build-dir build-toolchain --build-type ${{ matrix.build_type }} --test-timeout 300
 
   linux:
     name: Linux / ${{ matrix.compiler }} / ${{ matrix.build_type }} / Ninja
@@ -110,7 +110,7 @@ jobs:
       - name: Build
         run: python3 Scripts/setup.py build --build-dir build-toolchain --build-type ${{ matrix.build_type }} --parallel 4
       - name: Test
-        run: python3 Scripts/setup.py test --build-dir . --build-dir build-toolchain --build-type ${{ matrix.build_type }} --test-timeout 300
+        run: python3 Scripts/setup.py test --build-dir build-toolchain --build-type ${{ matrix.build_type }} --test-timeout 300
 
   macos:
     name: macOS / Clang / ${{ matrix.generator }} / ${{ matrix.build_type }}
@@ -140,4 +140,4 @@ jobs:
       - name: Build
         run: python3 Scripts/setup.py build --build-dir build-toolchain --build-type ${{ matrix.build_type }} --parallel 4
       - name: Test
-        run: python3 Scripts/setup.py test --build-dir . --build-dir build-toolchain --build-type ${{ matrix.build_type }} --test-timeout 300
+        run: python3 Scripts/setup.py test --build-dir build-toolchain --build-type ${{ matrix.build_type }} --test-timeout 300
