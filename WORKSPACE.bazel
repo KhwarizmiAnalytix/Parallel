@@ -37,7 +37,7 @@ openmp_configure(name = "parallel_openmp")
 # =============================================================================
 http_archive(
     name = "tbb",
-    build_file = "//ThirdParty:tbb.BUILD",
+    build_file = "//bazel:tbb.BUILD",
     strip_prefix = "oneTBB-2023.1.0",
     urls = [
         "https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2023.1.0.tar.gz",
