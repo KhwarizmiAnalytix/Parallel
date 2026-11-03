@@ -7,3 +7,8 @@ bazel_dep(name = "rules_cc", version = "0.2.17")
 bazel_dep(name = "platforms", version = "0.0.11")
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 bazel_dep(name = "rules_pkg", version = "1.0.1")
+
+# googletest and benchmark are vendored without their own MODULE.bazel —
+# registered via extension (mirrors the Logging repo's vendor_deps pattern).
+vendor = use_extension("//bazel:vendor_deps.bzl", "vendor_deps")
+use_repo(vendor, "com_google_googletest", "com_google_benchmark")

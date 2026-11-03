@@ -53,6 +53,18 @@ jobs:
             os: windows-latest
             build_type: Release
             compiler: ""
+          # Static builds — exercises PARALLEL_STATIC_DEFINE and the static link
+          # path, which the shared-default entries above never reach.
+          - name: ubuntu-gcc-static-release
+            os: ubuntu-latest
+            build_type: Release
+            compiler: gcc
+            extra_cmake_flags: "--static"
+          - name: windows-static-release
+            os: windows-latest
+            build_type: Release
+            compiler: ""
+            extra_cmake_flags: "--static"
 
     steps:
       - name: Checkout
@@ -82,13 +94,16 @@ jobs:
           --build-type=${{ matrix.build_type }}
           --testing=ON
           --benchmark=ON
+          ${{ matrix.extra_cmake_flags }}
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
         run: >
           python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build --architecture x64
+          --build-type=${{ matrix.build_type }}
           --testing=ON
           --benchmark=ON
+          ${{ matrix.extra_cmake_flags }}
 
       - name: Build
         run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build --build-type ${{ matrix.build_type }} --parallel=4
@@ -383,10 +398,60 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Bazel build + test (parity check against the CMake build).
+  # Matrix covers: platforms (Linux, macOS), compilation modes (fastbuild, opt),
+  # SMP backends (std, tbb, openmp), and the shared-libs config_setting — each
+  # targeting a code path in BUILD.bazel / parallel.bzl that only one combination
+  # exercises (macOS linkopts, Windows copts, TBB selects.with_or, shared defines).
+  # Windows Bazel is excluded: the windows-latest runner's Bazel setup is
+  # significantly slower and the Windows-specific copts are covered by CMake CI.
   # ---------------------------------------------------------------------------
   bazel:
-    name: bazel
-    runs-on: ubuntu-latest
+    name: bazel (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu-std-fastbuild
+            os: ubuntu-latest
+            mode: fastbuild
+            backend: std
+            shared: "false"
+          - name: ubuntu-std-opt
+            os: ubuntu-latest
+            mode: opt
+            backend: std
+            shared: "false"
+          - name: ubuntu-tbb-fastbuild
+            os: ubuntu-latest
+            mode: fastbuild
+            backend: tbb
+            shared: "false"
+          - name: ubuntu-openmp-fastbuild
+            os: ubuntu-latest
+            mode: fastbuild
+            backend: openmp
+            shared: "false"
+          # shared_libs config_setting — exercises PARALLEL_SHARED_DEFINE /
+          # PARALLEL_BUILDING_DLL local_define and linkstatic=False path.
+          - name: ubuntu-shared-fastbuild
+            os: ubuntu-latest
+            mode: fastbuild
+            backend: std
+            shared: "true"
+          # macOS: exercises the platform-specific -undefined dynamic_lookup
+          # linkopts branch and verifies AppleClang builds clean.
+          - name: macos-std-fastbuild
+            os: macos-latest
+            mode: fastbuild
+            backend: std
+            shared: "false"
+          - name: macos-tbb-fastbuild
+            os: macos-latest
+            mode: fastbuild
+            backend: tbb
+            shared: "false"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -400,15 +465,28 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/bazel
-          key: bazel-${{ runner.os }}-${{ hashFiles('MODULE.bazel', 'WORKSPACE.bazel', '.bazelrc') }}
+          key: bazel-${{ runner.os }}-${{ matrix.backend }}-${{ matrix.mode }}-${{ matrix.shared }}-${{ hashFiles('MODULE.bazel', 'WORKSPACE.bazel', '.bazelrc') }}
           restore-keys: |
+            bazel-${{ runner.os }}-${{ matrix.backend }}-${{ matrix.mode }}-
             bazel-${{ runner.os }}-
 
       - name: Build
         # Scoped to our own packages: "//..." would also descend into the vendored
         # ThirdParty/benchmark/tools package, which needs rules_python (not a
         # dependency of this repo's Bazel build).
-        run: python3 "${{ github.workspace }}/Scripts/setup_bazel.py" build --compiler=default --compilation-mode=fastbuild --target=//:Parallel --target=//Testing/...
+        shell: bash
+        run: |
+          args=(--compiler=default --compilation-mode=${{ matrix.mode }})
+          [[ "${{ matrix.backend }}" != "std" ]] && args+=(backend.${{ matrix.backend }})
+          [[ "${{ matrix.shared }}" == "true" ]] && args+=(shared)
+          args+=(--target=//:Parallel --target=//Testing/...)
+          python3 "${{ github.workspace }}/Scripts/setup_bazel.py" build "${args[@]}"
 
       - name: Test
-        run: python3 "${{ github.workspace }}/Scripts/setup_bazel.py" test --compiler=default --compilation-mode=fastbuild --test-output=errors --target=//Testing/...
+        shell: bash
+        run: |
+          args=(--compiler=default --compilation-mode=${{ matrix.mode }} --test-output=errors)
+          [[ "${{ matrix.backend }}" != "std" ]] && args+=(backend.${{ matrix.backend }})
+          [[ "${{ matrix.shared }}" == "true" ]] && args+=(shared)
+          args+=(--target=//Testing/...)
+          python3 "${{ github.workspace }}/Scripts/setup_bazel.py" test "${args[@]}"

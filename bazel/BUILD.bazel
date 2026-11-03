@@ -10,6 +10,7 @@ package(default_visibility = ["//visibility:public"])
 exports_files([
     "tbb.BUILD",
     "parallel.bzl",
+    "vendor_deps.bzl",
 ])
 
 # =============================================================================
